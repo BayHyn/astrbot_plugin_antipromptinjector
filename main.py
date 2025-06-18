@@ -161,6 +161,17 @@ class AntiPromptInjector(Star):
         ids = "\n".join(current_whitelist)
         yield event.plain_result(f"当前白名单用户：\n{ids}")
 
+    @filter.command("查看管理员状态") # 新增的命令
+    async def cmd_check_admin(self, event: AstrMessageEvent):
+        """
+        检查当前消息发送者是否为 AstrBot 全局管理员。
+        """
+        if event.is_admin():
+            yield event.plain_result("✅ 您是 AstrBot 全局管理员。")
+        else:
+            yield event.plain_result("❌ 您不是 AstrBot 全局管理员。")
+
+
     @filter.command("注入拦截帮助")
     async def cmd_help(self, event: AstrMessageEvent):
         msg = (
@@ -168,6 +179,7 @@ class AntiPromptInjector(Star):
             "/添加防注入白名单ID <ID> (需要管理员权限)\n"
             "/移除防注入白名单ID <ID> (需要管理员权限)\n"
             "/查看防注入白名单\n"
+            "/查看管理员状态\n" # 更新帮助信息
             "/注入拦截帮助\n"
         )
         yield event.plain_result(msg)
