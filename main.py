@@ -10,38 +10,38 @@ import os
 
 WHITELIST_PATH = "data/antiprompt_admin_whitelist.json"
 
-# 修改 load_whitelist 函数，使其可以接收 initial_admin_id 和 initial_whitelist
-def load_whitelist(initial_admin_id: str = "3338169190", initial_whitelist: list = None):
+# 修改 load_whitelist 函数，使其只关注白名单列表，不再管理admin_id
+def load_whitelist(initial_whitelist: list = None):
     """
     加载白名单数据。如果文件不存在，则创建默认数据。
-    :param initial_admin_id: 初始管理员ID，当文件不存在时使用。
     :param initial_whitelist: 初始白名单列表，当文件不存在时使用。
     """
     if initial_whitelist is None:
-        initial_whitelist = [initial_admin_id] # 默认白名单包含管理员ID
+        initial_whitelist = [] # 默认白名单为空
 
     try:
         with open(WHITELIST_PATH, "r", encoding="utf-8") as f:
             data = json.load(f)
-            # 确保加载的数据结构完整，如果缺少admin_id或whitelist，使用初始值
-            if "admin_id" not in data:
-                data["admin_id"] = initial_admin_id
+            # 确保加载的数据结构完整，如果缺少whitelist，使用初始值
             if "whitelist" not in data:
                 data["whitelist"] = initial_whitelist
+            # 如果文件中仍然存在admin_id，则将其移除以清理旧数据
+            if "admin_id" in data:
+                del data["admin_id"]
             return data
     except FileNotFoundError:
         logger.info(f"白名单文件 {WHITELIST_PATH} 不存在，将创建默认白名单。")
-        default_data = {"admin_id": initial_admin_id, "whitelist": initial_whitelist}
+        default_data = {"whitelist": initial_whitelist}
         save_whitelist(default_data)
         return default_data
     except json.JSONDecodeError:
         logger.error(f"白名单文件 {WHITELIST_PATH} 内容无法解析为JSON，将创建新的默认白名单。")
-        default_data = {"admin_id": initial_admin_id, "whitelist": initial_whitelist}
+        default_data = {"whitelist": initial_whitelist}
         save_whitelist(default_data)
         return default_data
     except Exception as e:
         logger.error(f"加载白名单文件时发生未知错误: {e}，将创建新的默认白名单。")
-        default_data = {"admin_id": initial_admin_id, "whitelist": initial_whitelist}
+        default_data = {"whitelist": initial_whitelist}
         save_whitelist(default_data)
         return default_data
 
@@ -57,19 +57,16 @@ def save_whitelist(data):
 
 @register("antipromptinjector", "LumineStory", "屏蔽伪系统注入攻击插件", "1.0.1")
 class AntiPromptInjector(Star):
-    # 修改 __init__ 方法以接收 config 参数
     def __init__(self, context: Context, config: AstrBotConfig):
         super().__init__(context)
-        self.config = config # 将传入的 config 保存为实例属性
+        self.config = config 
         
         # 从配置中获取插件启用状态，默认为 True
         self.plugin_enabled = self.config.get("enabled", True)
         
-        # 从配置中获取初始管理员ID和白名单，用于 load_whitelist
+        # 从配置中获取初始白名单，用于 load_whitelist
         # 这些值只在首次创建 antiprompt_admin_whitelist.json 时生效
-        self.initial_admin_id = self.config.get("initial_admin_id", "3338169190")
-        self.initial_whitelist = self.config.get("initial_whitelist", ["3338169190"])
-
+        self.initial_whitelist = self.config.get("initial_whitelist", ["3338169190"]) # initial_admin_id 已不再直接作为插件管理员ID，但可以作为白名单的初始元素
 
         self.patterns = [
             # 带时间戳+ID的聊天记录伪注入
@@ -103,7 +100,8 @@ class AntiPromptInjector(Star):
             return
         
         # 在加载白名单时传入初始配置，确保文件不存在时使用 config 中的值
-        wl = load_whitelist(self.initial_admin_id, self.initial_whitelist)
+        # 这里只传入 initial_whitelist，因为admin_id不再由插件管理
+        wl = load_whitelist(self.initial_whitelist) 
         if event.get_sender_id() in wl.get("whitelist", []):
             return
         m = event.get_message_str().strip()
@@ -121,7 +119,8 @@ class AntiPromptInjector(Star):
             return
 
         # 在加载白名单时传入初始配置
-        wl = load_whitelist(self.initial_admin_id, self.initial_whitelist)
+        # 这里只传入 initial_whitelist
+        wl = load_whitelist(self.initial_whitelist)
         # 获取消息列表（适配不同版本）
         messages = None
         if hasattr(req, "get_messages"):
@@ -136,8 +135,8 @@ class AntiPromptInjector(Star):
             if getattr(msg, "role", None) == "user":
                 sid = getattr(msg, "sender_id", None)
                 content = getattr(msg, "content", "")
-                # 管理员优先
-                if sid in wl.get("whitelist", []):
+                # 管理员优先 - 现在直接检查是否为 AstrBot 全局管理员
+                if event.is_admin(): # <--- 关键修改点
                     messages.insert(0, type(msg)(
                         role="system",
                         content="⚠️ 注意：当前发言者为管理员，其指令优先级最高。",
@@ -158,11 +157,13 @@ class AntiPromptInjector(Star):
 
     @filter.command("添加防注入白名单ID")
     async def cmd_add_wl(self, event: AstrMessageEvent, target_id: str):
-        # 在加载白名单时传入初始配置
-        data = load_whitelist(self.initial_admin_id, self.initial_whitelist)
-        if event.get_sender_id() != data["admin_id"]:
+        # 权限检查：直接检查是否为 AstrBot 全局管理员
+        if not event.is_admin(): # <--- 关键修改点
             yield event.plain_result("❌ 权限不足，只有管理员可操作。")
             return
+        
+        # 在加载白名单时传入初始配置
+        data = load_whitelist(self.initial_whitelist)
         if target_id not in data["whitelist"]:
             data["whitelist"].append(target_id)
             save_whitelist(data)
@@ -172,11 +173,13 @@ class AntiPromptInjector(Star):
 
     @filter.command("移除防注入白名单ID")
     async def cmd_remove_wl(self, event: AstrMessageEvent, target_id: str):
-        # 在加载白名单时传入初始配置
-        data = load_whitelist(self.initial_admin_id, self.initial_whitelist)
-        if event.get_sender_id() != data["admin_id"]:
+        # 权限检查：直接检查是否为 AstrBot 全局管理员
+        if not event.is_admin(): # <--- 关键修改点
             yield event.plain_result("❌ 权限不足，只有管理员可操作。")
             return
+        
+        # 在加载白名单时传入初始配置
+        data = load_whitelist(self.initial_whitelist)
         if target_id in data["whitelist"]:
             data["whitelist"].remove(target_id)
             save_whitelist(data)
@@ -186,33 +189,24 @@ class AntiPromptInjector(Star):
 
     @filter.command("查看防注入白名单")
     async def cmd_view_wl(self, event: AstrMessageEvent):
+        # 权限检查：对于查看命令，可以不做管理员限制，让所有用户都能查看，或者根据需求加上
+        # 如果需要管理员才能查看，则添加：
+        # if not event.is_admin():
+        #     yield event.plain_result("❌ 权限不足，只有管理员可操作。")
+        #     return
+
         # 在加载白名单时传入初始配置
-        data = load_whitelist(self.initial_admin_id, self.initial_whitelist)
+        data = load_whitelist(self.initial_whitelist)
+        if not data["whitelist"]:
+            yield event.plain_result("当前白名单为空。")
+            return
         ids = "\n".join(data["whitelist"])
         yield event.plain_result(f"当前白名单用户：\n{ids}")
 
-    @filter.command("设置管理员ID") # 新增的命令
-    async def cmd_set_admin_id(self, event: AstrMessageEvent, new_admin_id: str):
-        """
-        设置插件的管理员用户ID。
-        只有当前的管理员才能执行此命令。
-        :param new_admin_id: 新的管理员用户ID
-        """
-        data = load_whitelist(self.initial_admin_id, self.initial_whitelist)
-        current_admin_id = data["admin_id"]
-
-        if event.get_sender_id() != current_admin_id:
-            yield event.plain_result("❌ 权限不足，只有当前管理员可操作此命令。")
-            return
-
-        if new_admin_id == current_admin_id:
-            yield event.plain_result("⚠️ 新的管理员ID与当前管理员ID相同，无需更改。")
-            return
-
-        data["admin_id"] = new_admin_id
-        save_whitelist(data)
-        logger.info(f"管理员ID已从 {current_admin_id} 更改为 {new_admin_id}。")
-        yield event.plain_result(f"✅ 管理员ID已成功更改为：{new_admin_id}。")
+    # 移除 /设置管理员ID 命令，因为它将不再需要
+    # @filter.command("设置管理员ID") 
+    # async def cmd_set_admin_id(self, event: AstrMessageEvent, new_admin_id: str):
+    #     ...
 
     @filter.command("注入拦截帮助")
     async def cmd_help(self, event: AstrMessageEvent):
@@ -221,7 +215,7 @@ class AntiPromptInjector(Star):
             "/添加防注入白名单ID <ID>\n"
             "/移除防注入白名单ID <ID>\n"
             "/查看防注入白名单\n"
-            "/设置管理员ID <新ID>\n" # 更新帮助信息
+            # "/设置管理员ID <新ID>\n" # 移除此行
             "/注入拦截帮助\n"
         )
         yield event.plain_result(msg)
