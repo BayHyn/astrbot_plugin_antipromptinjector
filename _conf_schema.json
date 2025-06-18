@@ -7,13 +7,13 @@
         "obvious_hint": false
     },
     "initial_whitelist": {
-        "description": "插件的初始白名单用户ID列表。这些用户将默认不被注入检测拦截。后续可通过命令管理白名单。",
+        "description": "插件的初始白名单用户ID列表。这些用户将默认不被注入检测拦截。白名单管理命令权限由AstrBot全局管理员控制。",
         "type": "list",
         "items": {
             "type": "string",
             "description": "用户ID"
         },
-        "default": ["3338169190"],
+        "default": [],
         "obvious_hint": false,
         "editor_mode": true,
         "editor_language": "json"
