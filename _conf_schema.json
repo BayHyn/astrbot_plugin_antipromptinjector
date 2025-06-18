@@ -1,0 +1,29 @@
+{
+    "enabled": {
+        "description": "是否启用反注入攻击插件",
+        "type": "bool",
+        "hint": "设置为 True 启用提示词注入拦截功能，设置为 False 关闭。",
+        "default": true,
+        "obvious_hint": false
+    },
+    "initial_admin_id": {
+        "description": "插件的初始管理员用户ID",
+        "type": "string",
+        "hint": "该ID将被设置为插件白名单的初始管理员。请填写您的机器人拥有者的用户ID。后续可通过命令修改。",
+        "obvious_hint": true,
+        "default": "3338169190"
+    },
+    "initial_whitelist": {
+        "description": "插件的初始白名单用户ID列表",
+        "type": "list",
+        "hint": "用户ID列表，这些用户将被默认添加到反注入白名单中。后续可通过命令管理白名单。",
+        "items": {
+            "type": "string",
+            "description": "用户ID"
+        },
+        "default": ["3338169190"],
+        "obvious_hint": false,
+        "editor_mode": true,
+        "editor_language": "json"
+    }
+}
