@@ -1,6 +1,8 @@
 # AntiPromptInjector 插件
 
-![插件头图](https://raw.githubusercontent.com/oyxning/oyxning/refs/heads/main/sakisaki.jpg)
+<p align="center">
+  <img src="https://raw.githubusercontent.com/oyxning/oyxning/refs/heads/main/sakisaki2.jpg" alt="插件头图" width="200">
+</p>
 
 > 还在因为自己的 Bot 被调教成猫娘而烦恼吗？
 > AntiPromptInjector 插件为您提供全面的提示词注入防护，保护您的 Bot 不被恶意用户操控！
