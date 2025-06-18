@@ -3,26 +3,12 @@ from astrbot.api.provider import ProviderRequest
 from astrbot.api.star import Context, Star, register
 from astrbot.api import logger
 import re
-import json
-import os
 
 @register("antipromptinjector", "LumineStory", "屏蔽伪系统注入攻击的插件", "1.3.0")
 class AntiPromptInjector(Star):
     def __init__(self, context: Context):
         super().__init__(context)
-
-        config_path = os.path.join(os.path.dirname(__file__), "config.json")
-        if os.path.exists(config_path):
-            with open(config_path, "r", encoding="utf-8") as f:
-                self.config = json.load(f)
-        else:
-            self.config = {
-                "enabled": True,
-                "detect_admin_spoof": True,
-                "log_admin_commands": True,
-                "admin_ids": "3338169190"
-            }
-
+        self.config = context.config
         self.patterns = [
             re.compile(r"\[\S{1,12}/\d{1,2}:\d{2}:\d{2}]\[\d{5,12}]\s*[\s\S]*"),
             re.compile(r"^/system\s+.+", re.IGNORECASE),
@@ -32,14 +18,12 @@ class AntiPromptInjector(Star):
             re.compile(r"^```(python|json|prompt|system|txt)?\s*\\?n?", re.IGNORECASE),
             re.compile(r"^(##|prompt:|角色设定|你必须扮演).{0,50}$", re.IGNORECASE)
         ]
-
         self.admin_ids = set(self.config.get("admin_ids", "3338169190").split(","))
 
     @filter.event_message_type(filter.EventMessageType.ALL)
     async def detect_prompt_injection(self, event: AstrMessageEvent):
         if not self.config.get("enabled", True):
             return
-
         message = event.get_message_str().strip()
         for pattern in self.patterns:
             if pattern.match(message):
@@ -52,7 +36,6 @@ class AntiPromptInjector(Star):
     async def mark_admin_identity(self, event: AstrMessageEvent, req: ProviderRequest):
         if not self.config.get("enabled", True):
             return
-
         for msg in req.messages:
             if msg.role == "user":
                 if msg.sender_id in self.admin_ids:
