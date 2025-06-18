@@ -28,12 +28,6 @@
 - `/查看防注入白名单` - 查看当前白名单列表
 - `/注入拦截帮助` - 显示帮助信息
 
-## 使用方法
-
-1. 将 `plugin.py` 放入插件文件夹，例如 `astrbot_plugin_antipromptinjector`。
-2. 确保 `plugin.py` 与 `__init__.py` 在同一目录。
-3. 通过 AstrBot 可视化界面或手动方式加载插件。
-4. 插件首次运行时会在 `data/` 下自动生成 whitelist 配置文件。
 
 ## 插件信息
 
