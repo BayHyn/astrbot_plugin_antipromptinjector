@@ -11,9 +11,8 @@
 
 - ✅ 屏蔽提示词注入攻击（如伪造`[名字/时间][ID]`系统格式）
 - ✅ 拦截 Markdown、角色设定、/system 等指令注入格式
-- ✅ 在 LLM 层识别管理员身份（默认 ID：3338169190）
+- ✅ 在 LLM 层识别管理员身份（支持多管理员 ID）
 - ✅ 非管理员伪造管理员语气时，消息将被标记并修改
-- ✅ 支持多管理员白名单
 - ✅ 支持插件开关控制（启用/禁用防护功能）
 - ✅ 支持日志打印行为记录
 
@@ -40,7 +39,7 @@ cp -r astrbot_plugin_antipromptinjector data/plugins/
   "enabled": true,
   "detect_admin_spoof": true,
   "log_admin_commands": true,
-  "admin_ids": "3338169190"
+  "admin_ids": ["3338169190"]
 }
 ```
 
@@ -51,7 +50,7 @@ cp -r astrbot_plugin_antipromptinjector data/plugins/
 | `enabled`          | boolean | `true`    | 是否启用插件功能                          |
 | `detect_admin_spoof` | boolean | `true`    | 是否检测非管理员伪装管理员语气的内容              |
 | `log_admin_commands` | boolean | `true`    | 是否记录管理员发言到日志                     |
-| `admin_ids`        | string  | `3338169190` | 管理员 ID 白名单，多个 ID 用英文逗号分隔         |
+| `admin_ids`        | array   | `["3338169190"]` | 管理员 ID 白名单，多个 ID 用数组形式提供         |
 
 配置文件路径为插件目录下的 `config.json`，可根据需要修改配置以适应不同场景。
 
