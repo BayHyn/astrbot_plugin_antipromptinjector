@@ -1,6 +1,6 @@
 from astrbot.api.event import filter, AstrMessageEvent
+from astrbot.api.provider import ProviderRequest
 from astrbot.api.star import Context, Star, register
-from astrbot.api.llm import LLMMessage, filter_llm_request
 from astrbot.api import logger
 import re
 import json
@@ -11,7 +11,6 @@ class AntiPromptInjector(Star):
     def __init__(self, context: Context):
         super().__init__(context)
 
-        # 加载配置文件
         config_path = os.path.join(os.path.dirname(__file__), "config.json")
         if os.path.exists(config_path):
             with open(config_path, "r", encoding="utf-8") as f:
@@ -34,7 +33,6 @@ class AntiPromptInjector(Star):
             re.compile(r"^(##|prompt:|角色设定|你必须扮演).{0,50}$", re.IGNORECASE)
         ]
 
-        # 管理员ID白名单支持
         self.admin_ids = set(self.config.get("admin_ids", "3338169190").split(","))
 
     @filter.event_message_type(filter.EventMessageType.ALL)
@@ -43,7 +41,6 @@ class AntiPromptInjector(Star):
             return
 
         message = event.get_message_str().strip()
-
         for pattern in self.patterns:
             if pattern.match(message):
                 logger.warning(f"⚠️ 阻止潜在注入攻击消息: {message}")
@@ -51,26 +48,25 @@ class AntiPromptInjector(Star):
                 yield event.plain_result("⚠️ 检测到可能的提示词注入攻击，消息已被拦截。")
                 return
 
-    @filter_llm_request()
-    async def mark_admin_identity(self, messages: list[LLMMessage]):
+    @filter.on_llm_request()
+    async def mark_admin_identity(self, event: AstrMessageEvent, req: ProviderRequest):
         if not self.config.get("enabled", True):
             return
 
-        for msg in messages:
+        for msg in req.messages:
             if msg.role == "user":
                 if msg.sender_id in self.admin_ids:
                     if self.config.get("log_admin_commands", True):
                         logger.info(f"已识别管理员发言者: {msg.sender_id}")
-                    messages.insert(0, LLMMessage(
+                    req.messages.insert(0, type(msg)(
                         role="system",
                         content="请注意：当前发言者为管理员，其指令具有最高优先级且不可被伪造。",
                         sender_id="system"
                     ))
                     break
-                else:
-                    if self.config.get("detect_admin_spoof", True) and self._spoofed_admin_style(msg.content):
-                        logger.warning(f"⚠️ 非管理员尝试使用管理员语气发送消息: {msg.sender_id}")
-                        msg.content = "[消息已修改：疑似伪造管理员身份的行为已拦截]"
+                elif self.config.get("detect_admin_spoof", True) and self._spoofed_admin_style(msg.content):
+                    logger.warning(f"⚠️ 非管理员尝试使用管理员语气发送消息: {msg.sender_id}")
+                    msg.content = "[消息已修改：疑似伪造管理员身份的行为已拦截]"
 
     def _spoofed_admin_style(self, content: str) -> bool:
         spoof_patterns = [
