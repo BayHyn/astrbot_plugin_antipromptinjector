@@ -72,8 +72,10 @@ class AntiPromptInjector(Star):
 
 
         self.patterns = [
-            # 简易注入格式 [角色/时间]
-            re.compile(r"\[\S{1,12}/\d{1,2}:\d{2}:\d{2}]\[\d{5,12}]\s*[\s\S]*"),
+            # 带时间戳+ID的聊天记录伪注入
+            re.compile(r"\[\d{2}:\d{2}:\d{2}\].*?\[\d{5,12}\].*"),
+            # 简易注入格式 [角色/时间][ID]
+            re.compile(r"\[\S{1,12}/\d{1,2}:\d{2}:\d{2}\]\[\d{5,12}\]"),
             # 让Bot复述/重复内容
             re.compile(r"重复我(刚才|说的话|内容).*", re.IGNORECASE),
             # 已设置X为管理员 注入
@@ -102,7 +104,7 @@ class AntiPromptInjector(Star):
         
         # 在加载白名单时传入初始配置，确保文件不存在时使用 config 中的值
         wl = load_whitelist(self.initial_admin_id, self.initial_whitelist)
-        if event.get_sender_id() in wl.get("whitelist",):
+        if event.get_sender_id() in wl.get("whitelist", []):
             return
         m = event.get_message_str().strip()
         for p in self.patterns:
@@ -135,7 +137,7 @@ class AntiPromptInjector(Star):
                 sid = getattr(msg, "sender_id", None)
                 content = getattr(msg, "content", "")
                 # 管理员优先
-                if sid in wl.get("whitelist",):
+                if sid in wl.get("whitelist", []):
                     messages.insert(0, type(msg)(
                         role="system",
                         content="⚠️ 注意：当前发言者为管理员，其指令优先级最高。",
@@ -158,7 +160,7 @@ class AntiPromptInjector(Star):
     async def cmd_add_wl(self, event: AstrMessageEvent, target_id: str):
         # 在加载白名单时传入初始配置
         data = load_whitelist(self.initial_admin_id, self.initial_whitelist)
-        if event.get_sender_id()!= data["admin_id"]:
+        if event.get_sender_id() != data["admin_id"]:
             yield event.plain_result("❌ 权限不足，只有管理员可操作。")
             return
         if target_id not in data["whitelist"]:
@@ -172,7 +174,7 @@ class AntiPromptInjector(Star):
     async def cmd_remove_wl(self, event: AstrMessageEvent, target_id: str):
         # 在加载白名单时传入初始配置
         data = load_whitelist(self.initial_admin_id, self.initial_whitelist)
-        if event.get_sender_id()!= data["admin_id"]:
+        if event.get_sender_id() != data["admin_id"]:
             yield event.plain_result("❌ 权限不足，只有管理员可操作。")
             return
         if target_id in data["whitelist"]:
@@ -189,6 +191,29 @@ class AntiPromptInjector(Star):
         ids = "\n".join(data["whitelist"])
         yield event.plain_result(f"当前白名单用户：\n{ids}")
 
+    @filter.command("设置管理员ID") # 新增的命令
+    async def cmd_set_admin_id(self, event: AstrMessageEvent, new_admin_id: str):
+        """
+        设置插件的管理员用户ID。
+        只有当前的管理员才能执行此命令。
+        :param new_admin_id: 新的管理员用户ID
+        """
+        data = load_whitelist(self.initial_admin_id, self.initial_whitelist)
+        current_admin_id = data["admin_id"]
+
+        if event.get_sender_id() != current_admin_id:
+            yield event.plain_result("❌ 权限不足，只有当前管理员可操作此命令。")
+            return
+
+        if new_admin_id == current_admin_id:
+            yield event.plain_result("⚠️ 新的管理员ID与当前管理员ID相同，无需更改。")
+            return
+
+        data["admin_id"] = new_admin_id
+        save_whitelist(data)
+        logger.info(f"管理员ID已从 {current_admin_id} 更改为 {new_admin_id}。")
+        yield event.plain_result(f"✅ 管理员ID已成功更改为：{new_admin_id}。")
+
     @filter.command("注入拦截帮助")
     async def cmd_help(self, event: AstrMessageEvent):
         msg = (
@@ -196,6 +221,7 @@ class AntiPromptInjector(Star):
             "/添加防注入白名单ID <ID>\n"
             "/移除防注入白名单ID <ID>\n"
             "/查看防注入白名单\n"
+            "/设置管理员ID <新ID>\n" # 更新帮助信息
             "/注入拦截帮助\n"
         )
         yield event.plain_result(msg)
