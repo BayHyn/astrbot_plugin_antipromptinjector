@@ -37,10 +37,6 @@
 
 1. 将整个插件目录放入 AstrBot 的 `data/plugins/` 文件夹中：
 
-```
-cp -r astrbot_plugin_antipromptinjector data/plugins/
-```
-
 2. 重启 AstrBot 服务，或通过 WebUI 手动刷新插件列表。
 
 ---
