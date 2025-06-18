@@ -14,8 +14,6 @@
             "description": "用户ID"
         },
         "default": [],
-        "obvious_hint": false,
-        "editor_mode": true,
-        "editor_language": "json"
+        "obvious_hint": false
     }
 }
