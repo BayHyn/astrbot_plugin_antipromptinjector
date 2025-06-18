@@ -1,0 +1,40 @@
+{
+  "displayName": "提示词注入防护插件",
+  "name": "antipromptinjector",
+  "description": "拦截伪系统消息、管理员伪装、恶意提示词注入。",
+  "version": "1.3.0",
+  "author": "LumineStory",
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "title": "启用插件",
+        "description": "启用或关闭提示词注入防护功能",
+        "default": true
+      },
+      "detect_admin_spoof": {
+        "type": "boolean",
+        "title": "识别管理员伪装",
+        "description": "检测非管理员使用管理员语气的内容",
+        "default": true
+      },
+      "log_admin_commands": {
+        "type": "boolean",
+        "title": "记录管理员发言",
+        "description": "记录管理员身份和行为到日志",
+        "default": true
+      },
+      "admin_ids": {
+        "type": "array",
+        "title": "管理员 ID 白名单",
+        "description": "多个管理员 ID 用数组形式提供，例如 [\"123456\", \"999999\"]",
+        "items": {
+          "type": "string"
+        },
+        "default": ["3338169190"]
+      }
+    },
+    "required": ["enabled"]
+  }
+}
