@@ -1,5 +1,5 @@
 name: antipromptinjector
-version: v1.3.0
+version: v1.0.0
 author: LumineStory
 desc: 屏蔽伪系统注入攻击，支持管理员身份识别与伪装检测。
 repo: https://github.com/oyxning/astrbot_plugin_antipromptinjector
