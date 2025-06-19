@@ -15,5 +15,13 @@
         },
         "default": [],
         "obvious_hint": false
+    },
+    "llm_analysis_mode": {
+        "description": "LLM 注入分析模式",
+        "type": "string",
+        "enum": ["active", "standby", "disabled"],
+        "default": "standby",
+        "hint": "选择 LLM 分析的运行模式。\n- 'active' (活跃): 对每条消息进行 LLM 分析。\n- 'standby' (待机): 仅在用户主动触发或正则未拦截时进行 LLM 分析，并在连续未检测到注入后自动进入待机。\n- 'disabled' (禁用): 完全关闭 LLM 分析。\n请注意：启用 LLM 分析模式将消耗 LLM 的 token。",
+        "obvious_hint": true
     }
 }
