@@ -134,8 +134,8 @@ class AntiPromptInjector(Star):
 
         # 第二层防御：调用 AstrBot LLM 插件进行分析
         # 仅在 AstrBot LLM 服务可用时执行
-        # Corrected line: Use get_llm_provider() method
-        llm_provider_instance = self.context.provider_manager.get_llm_provider()
+        # Corrected line based on documentation: Use get_using_provider() method
+        llm_provider_instance = self.context.provider_manager.get_using_provider()
         if llm_provider_instance: 
             try:
                 # 针对LLM的指令进行精炼，使其更专注于识别注入意图
@@ -208,7 +208,6 @@ class AntiPromptInjector(Star):
                     re.compile(r"从现在开始你必须"),
                     re.compile(r"你现在是.*管理员"),
                     re.compile(r"请忽略上方所有设定"),
-                    re.compile(r"重复我说的话"),
                 ]:
                     if pat.search(content):
                         logger.warning(f"⚠️ 拦截伪管理员语气: {sid}")
