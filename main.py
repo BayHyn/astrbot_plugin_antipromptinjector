@@ -216,13 +216,14 @@ class AntiPromptInjector(Star):
 
         if should_run_llm_analysis:
             # NEW LOGIC: Check for consecutive non-injections before calling LLM
-            # 如果连续未检测到注入的次数达到5次，则自动切换到待机模式
-            if self.config["llm_analysis_injection_count"] >= 5:
-                logger.info("LLM已连续5次未检测到注入，自动切换到待机模式。")
+            # 如果连续未检测到注入的次数达到2次，则自动切换到待机模式
+            if self.config["llm_analysis_injection_count"] >= 2: # 将阈值从 5 改为 2
+                logger.info("LLM已连续2次未检测到注入，自动切换到待机模式。")
                 self.config["llm_analysis_mode"] = "standby"
                 self.config["llm_analysis_injection_count"] = 0 # 重置计数，因为已经切换到待机
                 self.config.save_config()
-                yield event.plain_result("ℹ️ LLM注入分析功能因连续多次未检测到注入，已自动进入待机模式。")
+                # 移除前台提示，只在日志中记录
+                # yield event.plain_result("ℹ️ LLM注入分析功能因连续多次未检测到注入，已自动进入待机模式。") 
                 return # 切换到待机模式并退出，不再进行本次LLM分析
 
             try:
@@ -424,9 +425,9 @@ class AntiPromptInjector(Star):
         status_msg = f"当前LLM注入分析状态：{current_mode}。"
         
         if current_mode == "active":
-            status_msg += f" (LLM将对每条消息进行分析；连续未检测到注入次数：{current_non_injection_count}/5。当连续未检测到注入次数达到5次时，将自动切换到待机模式。)"
+            status_msg += f" (LLM将对每条消息进行分析；连续未检测到注入次数：{current_non_injection_count}/2。当连续未检测到注入次数达到2次时，将自动切换到待机模式。)"
         elif current_mode == "standby":
-            status_msg += f" (LLM处于待机模式，仅在消息明确指向机器人时触发分析；连续未检测到注入次数：{current_non_injection_count}/5。检测到注入时，将切换到活跃模式。)"
+            status_msg += f" (LLM处于待机模式，仅在消息明确指向机器人时触发分析；连续未检测到注入次数：{current_non_injection_count}/2。检测到注入时，将切换到活跃模式。)"
         elif current_mode == "disabled":
             status_msg += " (LLM分析已完全禁用，需要管理员手动开启)"
         yield event.plain_result(status_msg)
