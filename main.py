@@ -153,22 +153,28 @@ class AntiPromptInjector(Star):
                 return # <- 正则拦截后立即返回
 
         # --- 第二层防御：LLM 注入分析 ---
-        current_llm_mode = self.config.get("llm_analysis_mode", "standby") # 默认从待机模式开始
+        current_llm_mode = self.config.get("llm_analysis_mode", "standby") # 读取当前模式
         llm_provider_instance = self.context.get_using_provider()
 
         # 如果没有LLM提供者，LLM分析无法进行
         if not llm_provider_instance:
-            if current_llm_mode != "disabled": # 如果不是管理员手动禁用的，记录一下
-                logger.warning("LLM提供者不可用，LLM注入分析无法执行。")
+            # 如果当前模式不是 disabled，且LLM提供者不可用，记录警告
+            if current_llm_mode != "disabled":
+                logger.warning("LLM提供者不可用，LLM注入分析无法执行。请检查LLM配置。")
+                # 如果LLM不可用，则强制切换到待机模式
+                if current_llm_mode != "standby": 
+                    self.config["llm_analysis_mode"] = "standby"
+                    self.config["llm_analysis_no_injection_count"] = 0
+                    self.config.save_config()
+                    yield event.plain_result("⚠️ LLM注入分析功能因LLM提供者不可用，已自动进入待机状态。")
             return # 没有LLM提供者则直接退出
 
-        # 根据当前LLM分析模式决定是否进行分析
+        # 确定是否需要运行本次LLM分析
         should_run_llm_analysis = False
         if current_llm_mode == "active":
-            # 如果是活跃模式，则始终运行LLM分析
             should_run_llm_analysis = True
         elif current_llm_mode == "standby":
-            # 如果是待机模式，则每次用户发送消息（未被正则拦截）都视为一次“主动触发”
+            # 在待机模式下，未被正则拦截的普通消息视为触发
             should_run_llm_analysis = True
             logger.info(f"LLM分析从待机状态被用户消息触发。消息: {message_content[:30]}...")
             
@@ -210,14 +216,15 @@ class AntiPromptInjector(Star):
                     return # 拦截后直接返回
                 else:
                     # LLM 分析结果为“否”（未检测到注入）
-                    self.config["llm_analysis_no_injection_count"] += 1
-                    logger.info(f"LLM未检测到注入，未注入计数: {self.config['llm_analysis_no_injection_count']}")
+                    # 无论当前模式是 active 还是 standby，只要是“否”就切换到待机
+                    self.config["llm_analysis_mode"] = "standby" 
+                    self.config["llm_analysis_no_injection_count"] += 1 
+                    logger.info(f"LLM未检测到注入，当前模式切换至待机。未注入计数: {self.config['llm_analysis_no_injection_count']}")
 
-                    # 无论当前是 active 还是 standby 模式，如果连续5次未检测到注入，就进入待机模式
+                    # 如果连续5次未检测到注入，且模式是待机，则重置计数
                     if self.config["llm_analysis_no_injection_count"] >= 5:
-                        logger.info("LLM连续5次未检测到注入，自动进入待机状态。")
-                        self.config["llm_analysis_mode"] = "standby" # 切换到待机模式
-                        self.config["llm_analysis_no_injection_count"] = 0 # 重置计数
+                        logger.info("LLM在待机模式下连续5次未检测到注入，重置计数并保持待机状态。")
+                        self.config["llm_analysis_no_injection_count"] = 0 
                     
                     self.config.save_config()
                     return # 不拦截，继续流转
