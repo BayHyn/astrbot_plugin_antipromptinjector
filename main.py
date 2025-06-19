@@ -135,7 +135,7 @@ class AntiPromptInjector(Star):
         # 第二层防御：调用 AstrBot LLM 插件进行分析
         # 仅在 AstrBot LLM 服务可用时执行
         # Corrected line based on documentation: Use get_using_provider() method
-        llm_provider_instance = self.context.provider_manager.get_using_provider()
+        llm_provider_instance = self.context.get_using_provider() # <- 这里已修正
         if llm_provider_instance: 
             try:
                 # 针对LLM的指令进行精炼，使其更专注于识别注入意图
