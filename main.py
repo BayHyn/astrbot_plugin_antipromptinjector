@@ -134,7 +134,9 @@ class AntiPromptInjector(Star):
 
         # 第二层防御：调用 AstrBot LLM 插件进行分析
         # 仅在 AstrBot LLM 服务可用时执行
-        if self.context.provider_manager.llm_provider:
+        # Corrected line: Use get_llm_provider() method
+        llm_provider_instance = self.context.provider_manager.get_llm_provider()
+        if llm_provider_instance: 
             try:
                 # 针对LLM的指令进行精炼，使其更专注于识别注入意图
                 llm_prompt = (
@@ -156,7 +158,7 @@ class AntiPromptInjector(Star):
                 logger.info(f"调用LLM进行二次注入分析: {message_content[:50]}...") # 记录LLM分析请求
 
                 # 调用LLM，使用generate_text方法
-                llm_response = await self.context.provider_manager.llm_provider.generate_text(request=llm_request)
+                llm_response = await llm_provider_instance.generate_text(request=llm_request)
                 
                 llm_decision = llm_response.completion_text.strip().lower()
                 logger.info(f"LLM注入分析结果: {llm_decision} for message: {message_content[:50]}...") # 记录LLM分析结果
