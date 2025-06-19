@@ -31,9 +31,9 @@ class AntiPromptInjector(Star):
             self.config.save_config()
 
         # LLM 注入分析控制状态
-        # 插件载入时，LLM分析模式默认开启 ('active')
+        # 插件载入时，LLM分析模式默认设置为 'standby' (待机)
         if "llm_analysis_mode" not in self.config:
-            self.config["llm_analysis_mode"] = "active" # 初始模式设为活跃
+            self.config["llm_analysis_mode"] = "standby" # 初始模式设为待机
             self.config.save_config()
         
         # 用于记录 LLM 连续检测到注入的次数。当达到5次时，LLM分析将自动进入待机模式。
@@ -167,7 +167,7 @@ class AntiPromptInjector(Star):
                 return # 正则表达式拦截后立即返回
 
         # --- 第二层防御：LLM 注入分析 ---
-        current_llm_mode = self.config.get("llm_analysis_mode", "active") # 读取当前LLM分析模式
+        current_llm_mode = self.config.get("llm_analysis_mode", "standby") # 读取当前LLM分析模式
         llm_provider_instance = self.context.get_using_provider() # 获取当前使用的LLM提供者
 
         # 如果没有LLM提供者，LLM分析无法进行
@@ -188,9 +188,14 @@ class AntiPromptInjector(Star):
             # 如果是活跃模式，则始终运行LLM分析
             should_run_llm_analysis = True
         elif current_llm_mode == "standby":
-            # 在待机模式下，未被正则拦截的普通用户消息视为“主动触发”，执行一次LLM分析
-            should_run_llm_analysis = True
-            logger.info(f"LLM分析从待机状态被用户消息触发。消息: {message_content[:30]}...")
+            # 在待机模式下，LLM分析仅在用户消息明确指向机器人时触发
+            if event.is_at_or_wake_command(): # 使用 AstrBot 的内置触发检查
+                should_run_llm_analysis = True
+                logger.info(f"LLM分析从待机状态被用户消息触发 (主动触发)。消息: {message_content[:30]}...")
+            else:
+                logger.debug(f"LLM分析在待机模式下未被触发 (非主动触发)。消息: {message_content[:30]}...")
+                # 如果没有被触发，直接返回，不进行LLM分析
+                return 
             
         # 如果当前模式是 'disabled'，则 should_run_llm_analysis 保持为 False，不会进行分析
 
@@ -387,7 +392,7 @@ class AntiPromptInjector(Star):
         查看当前LLM注入分析的运行状态（活跃、待机、禁用）及相关计数。
         此命令对所有用户开放。
         """
-        current_mode = self.config.get("llm_analysis_mode", "active") # 默认初始模式为活跃
+        current_mode = self.config.get("llm_analysis_mode", "standby") # 默认初始模式为待机
         current_injection_count = self.config.get("llm_analysis_injection_count", 0)
         status_msg = f"当前LLM注入分析状态：{current_mode}。"
         

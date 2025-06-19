@@ -20,8 +20,8 @@
         "description": "LLM 注入分析模式。此模式控制是否使用大语言模型进行高级注入检测。",
         "type": "string",
         "enum": ["active", "standby", "disabled"],
-        "default": "active",
-        "hint": "选择 LLM 分析的运行模式：\n- 'active' (活跃): LLM分析功能默认开启，对每条消息进行分析。当检测到注入时，将保持活跃。如果连续5次未检测到注入，则自动切换到 'standby'。\n- 'standby' (待机): LLM分析功能处于待机状态，仅在用户消息未被正则拦截时被动触发一次LLM分析。如果LLM分析结果为“未注入”，或连续5次检测到注入（从活跃模式累积），模式将自动切换回/保持在 'standby'。\n- 'disabled' (禁用): 完全关闭 LLM 分析功能，不进行任何 LLM 调用。\n重要提示：启用 LLM 分析模式将消耗您绑定的 LLM 服务的 token。建议在需要时开启。",
+        "default": "standby",
+        "hint": "选择 LLM 分析的运行模式：\n- 'active' (活跃): LLM分析功能对每条消息进行分析。当检测到注入时，将保持活跃，直到连续5次未检测到注入。\n- 'standby' (待机): 默认模式。LLM分析功能处于待机状态，仅在用户消息明确指向机器人（如@、唤醒词或私聊）且未被正则拦截时被动触发一次LLM分析。如果LLM分析结果为“未注入”，模式将自动切换回/保持在 'standby'。如果连续5次检测到注入（从活跃模式累积），也将自动切换回 'standby'。\n- 'disabled' (禁用): 完全关闭 LLM 分析功能，不进行任何 LLM 调用。\n重要提示：启用 LLM 分析模式将消耗您绑定的 LLM 服务的 token。建议在需要时开启。",
         "obvious_hint": true
     },
     "llm_analysis_injection_count": {
