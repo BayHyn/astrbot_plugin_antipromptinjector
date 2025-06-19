@@ -1,13 +1,13 @@
 {
     "enabled": {
-        "description": "是否启用反注入攻击插件",
+        "description": "是否启用反注入攻击插件功能。",
         "type": "bool",
-        "hint": "设置为 True 启用提示词注入拦截功能，设置为 False 关闭。",
+        "hint": "设置为 True 启用提示词注入拦截功能，设置为 False 关闭。即使插件启用，LLM分析功能也可独立控制。",
         "default": true,
         "obvious_hint": false
     },
     "initial_whitelist": {
-        "description": "插件的初始白名单用户ID列表。这些用户将默认不被注入检测拦截。白名单管理命令权限由AstrBot全局管理员控制。",
+        "description": "插件的初始白名单用户ID列表。这些用户发送的消息将不会被注入检测拦截。白名单的管理权限由 AstrBot 全局管理员控制。",
         "type": "list",
         "items": {
             "type": "string",
@@ -17,11 +17,18 @@
         "obvious_hint": false
     },
     "llm_analysis_mode": {
-        "description": "LLM 注入分析模式",
+        "description": "LLM 注入分析模式。此模式控制是否使用大语言模型进行高级注入检测。",
         "type": "string",
         "enum": ["active", "standby", "disabled"],
-        "default": "standby",
-        "hint": "选择 LLM 分析的运行模式。\n- 'active' (活跃): 对每条消息进行 LLM 分析。\n- 'standby' (待机): 仅在用户主动触发或正则未拦截时进行 LLM 分析，并在连续未检测到注入后自动进入待机。\n- 'disabled' (禁用): 完全关闭 LLM 分析。\n请注意：启用 LLM 分析模式将消耗 LLM 的 token。",
+        "default": "active",
+        "hint": "选择 LLM 分析的运行模式：\n- 'active' (活跃): LLM分析功能默认开启，对每条消息进行分析。当检测到注入时，将保持活跃。如果连续5次未检测到注入，则自动切换到 'standby'。\n- 'standby' (待机): LLM分析功能处于待机状态，仅在用户消息未被正则拦截时被动触发一次LLM分析。如果LLM分析结果为“未注入”，或连续5次检测到注入（从活跃模式累积），模式将自动切换回/保持在 'standby'。\n- 'disabled' (禁用): 完全关闭 LLM 分析功能，不进行任何 LLM 调用。\n重要提示：启用 LLM 分析模式将消耗您绑定的 LLM 服务的 token。建议在需要时开启。",
         "obvious_hint": true
+    },
+    "llm_analysis_injection_count": {
+        "description": "LLM 连续检测到注入的次数。当此计数达到 5 次时，LLM分析模式将自动切换到 'standby'。",
+        "type": "int",
+        "default": 0,
+        "invisible": true,
+        "hint": "此计数器用于内部跟踪 LLM 连续检测到注入的次数。用户通常无需手动修改此项。"
     }
 }
