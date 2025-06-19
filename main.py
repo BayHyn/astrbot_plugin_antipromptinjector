@@ -189,7 +189,7 @@ class AntiPromptInjector(Star):
             should_run_llm_analysis = True
         elif current_llm_mode == "standby":
             # 在待机模式下，LLM分析仅在用户消息明确指向机器人时触发
-            if event.is_at_or_wake_command(): # 使用 AstrBot 的内置触发检查
+            if event.is_at_or_wake_command: # <--- 这里修改了：移除了括号
                 should_run_llm_analysis = True
                 logger.info(f"LLM分析从待机状态被用户消息触发 (主动触发)。消息: {message_content[:30]}...")
             else:
