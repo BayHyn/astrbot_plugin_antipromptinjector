@@ -21,14 +21,14 @@
         "type": "string",
         "enum": ["active", "standby", "disabled"],
         "default": "standby",
-        "hint": "选择 LLM 分析的运行模式：\n- 'active' (活跃): LLM分析功能对每条消息进行分析。当LLM连续2次未检测到注入时，将自动切换到 'standby'。\n- 'standby' (待机): 默认模式。LLM分析功能处于待机状态，仅在用户消息明确指向机器人时触发LLM分析。如果LLM检测到注入，模式将切换到 'active'。\n- 'disabled' (禁用): 完全关闭 LLM 分析功能，不进行任何 LLM 调用。\n重要提示：启用 LLM 分析模式将消耗您绑定的 LLM 服务的 token。建议在需要时开启。",
+        "hint": "选择 LLM 分析的运行模式：\n- 'active' (活跃): LLM分析功能对每条消息进行分析。如果5秒内没有LLM分析发生（即没有检测到注入），将自动切换到 'standby'。\n- 'standby' (待机): 默认模式。LLM分析功能处于待机状态，仅在用户消息明确指向机器人或检测到注入时触发LLM分析。检测到注入时，将切换到 'active'；未检测到注入时，将立即切换回 'standby'。\n- 'disabled' (禁用): 完全关闭 LLM 分析功能，不进行任何 LLM 调用。\n重要提示：启用 LLM 分析模式将消耗您绑定的 LLM 服务的 token。建议在需要时开启。",
         "obvious_hint": true
     },
-    "llm_analysis_injection_count": {
-        "description": "LLM 连续未检测到注入的次数。当此计数达到 2 次时，LLM分析模式将自动切换到 'standby'。",
-        "type": "int",
-        "default": 0,
-        "invisible": true,
-        "hint": "此计数器用于内部跟踪 LLM 连续未检测到注入的次数。当达到2次时，LLM分析模式将自动切换到 'standby'。用户通常无需手动修改此项。"
+    "llm_analysis_private_chat_enabled": {
+        "description": "是否为私聊启用LLM注入分析。如果启用，私聊消息将始终进行LLM分析，不受待机模式影响。",
+        "type": "bool",
+        "default": false,
+        "hint": "设置为 True 可让私聊消息也进行LLM注入分析。请注意，这将增加LLM的调用频率和token消耗。默认情况下私聊不进行LLM分析。",
+        "obvious_hint": true
     }
 }
