@@ -1,9 +1,9 @@
-from astrbot.api.event import filter, AstrMessageEvent, MessageType # 导入 MessageType 以判断消息类型，根据文档结构修正导入路径
+from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.provider import ProviderRequest
 from astrbot.api.star import Context, Star, register
 from astrbot.api import logger
 from astrbot.api import AstrBotConfig
-
+from astrbot.api import MessageType # 导入 MessageType 以判断消息类型
 
 import re
 import asyncio
