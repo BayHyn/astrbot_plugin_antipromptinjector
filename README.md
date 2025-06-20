@@ -1,7 +1,7 @@
 # AntiPromptInjector 插件
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/oyxning/oyxning/refs/heads/main/sakisaki2.jpg" alt="插件头图" width="200">
+  <img src="https://raw.githubusercontent.com/oyxning/oyxning/refs/heads/main/AntiPromptInjectorlogo.png" alt="插件头图" width="200">
 </p>
 
 > **还在因为自己的 Bot 被调教成猫娘而烦恼吗？**  
