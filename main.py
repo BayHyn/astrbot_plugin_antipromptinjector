@@ -123,6 +123,11 @@ class AntiPromptInjector(Star):
     @filter.event_message_type(filter.EventMessageType.ALL)
     async def detect_prompt_injection(self, event: AstrMessageEvent):
         """对所有接收到的消息进行注入攻击检测，分为正则表达式匹配和LLM分析两层防御。"""
+        # 如果是命令消息，则直接跳过注入检测
+        if event.is_command:
+            logger.debug(f"检测到命令消息: {event.get_message_str()}. 跳过注入检测。")
+            return
+
         if not self.plugin_enabled:
             return
         
@@ -347,6 +352,22 @@ class AntiPromptInjector(Star):
         elif current_mode == "disabled":
             status_msg += " (LLM分析已完全禁用，需要管理员手动开启)"
         yield event.plain_result(status_msg)
+
+    @filter.command("反注入帮助")
+    async def cmd_help(self, event: AstrMessageEvent):
+        """显示反注入插件的所有可用命令及其说明。"""
+        msg = (
+            "🛡️ 反注入插件命令：\n"
+            "/添加防注入白名单ID <ID> (需要管理员权限)\n"
+            "/移除防注入白名单ID <ID> (需要管理员权限)\n"
+            "/查看防注入白名单\n"
+            "/查看管理员状态\n"
+            "/开启LLM注入分析 (需要管理员权限)\n"
+            "/关闭LLM注入分析 (需要管理员权限)\n"
+            "/LLM分析状态\n"
+            "/反注入帮助\n"
+        )
+        yield event.plain_result(msg)
 
     async def terminate(self):
         """插件终止时调用，用于清理资源。"""
