@@ -3,7 +3,7 @@ from astrbot.api.provider import ProviderRequest
 from astrbot.api.star import Context, Star, register
 from astrbot.api import logger
 from astrbot.api import AstrBotConfig
-from astrbot.api import MessageType # 修正：直接从 astrbot.api 导入 MessageType
+from astrbot.api.all import MessageType # 修正：尝试从 astrbot.api.all 导入 MessageType
 
 import re
 import asyncio
