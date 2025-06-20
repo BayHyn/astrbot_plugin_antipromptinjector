@@ -270,15 +270,11 @@ class AntiPromptInjector(Star):
             # else:
                 # 如果 system_prompt 不包含恶意模式，则不进行清除，允许其通过
                 # 这使得像 likability-level 这样非恶意的插件能够修改 system_prompt
-            
-        # 对于 ProviderRequest 中的 messages 列表，detect_prompt_injection 已经处理了用户输入。
-        # 此处不再对 req.messages 进行额外拦截或修改，因为主要注入防御已在早期完成。
+
         # 这个钩子的主要目的是确保LLM的核心指令不被外部Prompt覆盖。
         messages = getattr(req, "messages", [])
         for msg in messages:
             if getattr(msg, "role", None) == "user" and getattr(msg, "content", ""):
-                # 理论上，此处的用户消息内容已经通过了 detect_prompt_injection 的审查。
-                # 此处不再进行处理，因为指令是“不接受除系统内置prompt外的所有prompt”，
                 # 而用户消息本身就是一种“prompt”，其安全性应由 detect_prompt_injection 负责。
                 pass
 
