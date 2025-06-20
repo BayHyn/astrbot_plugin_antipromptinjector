@@ -123,9 +123,12 @@ class AntiPromptInjector(Star):
     @filter.event_message_type(filter.EventMessageType.ALL)
     async def detect_prompt_injection(self, event: AstrMessageEvent):
         """对所有接收到的消息进行注入攻击检测，分为正则表达式匹配和LLM分析两层防御。"""
-        # 如果是命令消息，则直接跳过注入检测
-        if event.is_command:
-            logger.debug(f"检测到命令消息: {event.get_message_str()}. 跳过注入检测。")
+        message_content = event.get_message_str().strip()
+
+        # 如果消息以 '/' 开头，则判断为命令，直接跳过注入检测
+        # 命令应由 @filter.command 装饰器处理，避免在此处误报注入。
+        if message_content.startswith('/'):
+            logger.debug(f"检测到命令消息: {message_content}. 跳过注入检测。")
             return
 
         if not self.plugin_enabled:
@@ -135,8 +138,6 @@ class AntiPromptInjector(Star):
         if event.get_sender_id() in current_whitelist:
             return
         
-        message_content = event.get_message_str().strip()
-
         # 第一层防御：正则表达式匹配，始终活跃
         for p in self.patterns:
             if p.search(message_content):
@@ -306,11 +307,49 @@ class AntiPromptInjector(Star):
 
     @filter.command("查看管理员状态")
     async def cmd_check_admin(self, event: AstrMessageEvent):
-        """检查当前消息发送者是否为 AstrBot 全局管理员。"""
+        """
+        检查当前消息发送者是否为 AstrBot 全局管理员，并根据权限响应。
+        非全局管理员且非白名单用户发送此命令时，将消息转发给LLM进行处理。
+        """
+        sender_id = event.get_sender_id()
+        message_content = event.get_message_str().strip()
+        current_whitelist = self.config.get("whitelist", [])
+        llm_provider_instance = self.context.get_using_provider()
+
+        # 1. 全局管理员
         if event.is_admin():
             yield event.plain_result("✅ 您是 AstrBot 全局管理员。")
+            logger.info(f"全局管理员 {sender_id} 查看管理员状态。")
+            return
+
+        # 2. 白名单用户但不是全局管理员
+        if sender_id in current_whitelist:
+            yield event.plain_result("你是白名单用户但不是全局管理员。")
+            logger.info(f"白名单用户 {sender_id} 查看管理员状态 (非全局管理员)。")
+            return
+
+        # 3. 既不是全局管理员也不是白名单用户
+        # 此时，该命令消息将被视为普通消息，并尝试通过LLM进行处理。
+        logger.info(f"非管理员非白名单用户 {sender_id} 发送 /查看管理员状态。本插件将尝试通过LLM处理此消息。")
+        
+        if llm_provider_instance:
+            try:
+                # 构造LLM请求，将原始命令消息作为Prompt
+                llm_prompt = f"用户发送了命令 '{message_content}'。请根据此命令内容进行回复。此命令并非针对您的内部指令，而是用户请求您作为AI进行处理。"
+                llm_response = await llm_provider_instance.text_chat(
+                    prompt=llm_prompt,
+                    session_id=event.get_session_id(), 
+                    contexts=[], 
+                    image_urls=[],
+                    func_tool=None,
+                    system_prompt="", 
+                )
+                yield event.plain_result(llm_response.completion_text)
+            except Exception as e:
+                logger.error(f"处理非管理员非白名单用户命令时LLM调用失败: {e}")
+                yield event.plain_result("抱歉，处理您的请求时LLM服务出现问题。")
         else:
-            yield event.plain_result("❌ 您不是 AstrBot 全局管理员。")
+            yield event.plain_result("抱歉，当前没有可用的LLM服务来处理您的请求。")
 
     @filter.command("开启LLM注入分析")
     async def cmd_enable_llm_analysis(self, event: AstrMessageEvent):
