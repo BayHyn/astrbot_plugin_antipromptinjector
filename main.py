@@ -24,9 +24,10 @@ class AntiPromptInjector(Star):
             self.config["llm_analysis_mode"] = "standby"
             self.config.save_config()
         
-        if "llm_analysis_injection_count" not in self.config:
-            self.config["llm_analysis_injection_count"] = 0
-            self.config.save_config()
+        # 移除了 llm_analysis_injection_count 的初始化，因为它不再使用
+        # if "llm_analysis_injection_count" not in self.config:
+        #     self.config["llm_analysis_injection_count"] = 0
+        #     self.config.save_config()
 
         self.last_llm_analysis_time = None 
         self.monitor_task = asyncio.create_task(self._monitor_llm_activity())
@@ -111,14 +112,15 @@ class AntiPromptInjector(Star):
             await asyncio.sleep(1)
             current_llm_mode = self.config.get("llm_analysis_mode", "standby")
             
+            # 只有在活跃模式下，且 last_llm_analysis_time 已设置，才进行不活跃检测
             if current_llm_mode == "active" and self.last_llm_analysis_time is not None:
                 current_time = time.time()
-                if (current_time - self.last_llm_analysis_time) >= 5:
+                if (current_time - self.last_llm_analysis_time) >= 5: # 5秒不活跃阈值
                     logger.info("LLM分析因不活跃而自动切换到待机模式。")
                     self.config["llm_analysis_mode"] = "standby"
-                    self.config["llm_analysis_injection_count"] = 0
+                    # self.config["llm_analysis_injection_count"] = 0 # 移除了计数器相关代码
                     self.config.save_config()
-                    self.last_llm_analysis_time = None
+                    self.last_llm_analysis_time = None # 重置时间戳
     
     @filter.event_message_type(filter.EventMessageType.ALL)
     async def detect_prompt_injection(self, event: AstrMessageEvent):
@@ -126,7 +128,6 @@ class AntiPromptInjector(Star):
         message_content = event.get_message_str().strip()
 
         # 如果消息以 '/' 开头，则判断为命令，直接跳过注入检测
-        # 命令应由 @filter.command 装饰器处理，避免在此处误报注入。
         if message_content.startswith('/'):
             logger.debug(f"检测到命令消息: {message_content}. 跳过注入检测。")
             return
@@ -144,7 +145,7 @@ class AntiPromptInjector(Star):
                 logger.warning(f"⚠️ 正则表达式拦截注入消息: {message_content}")
                 event.stop_event()
                 yield event.plain_result("⚠️ 检测到可能的注入攻击 (模式匹配)，消息已被拦截。")
-                self.config["llm_analysis_injection_count"] = 0 
+                # self.config["llm_analysis_injection_count"] = 0 # 移除了计数器相关代码
                 self.config.save_config()
                 return
 
@@ -157,7 +158,7 @@ class AntiPromptInjector(Star):
                 logger.warning("LLM提供者不可用，LLM注入分析无法执行。")
                 if current_llm_mode != "standby": 
                     self.config["llm_analysis_mode"] = "standby"
-                    self.config["llm_analysis_injection_count"] = 0
+                    # self.config["llm_analysis_injection_count"] = 0 # 移除了计数器相关代码
                     self.config.save_config()
                     yield event.plain_result("⚠️ LLM注入分析功能因LLM提供者不可用，已自动进入待机状态。")
             return
@@ -200,9 +201,8 @@ class AntiPromptInjector(Star):
                     event.stop_event()
                     yield event.plain_result("⚠️ 检测到可能的注入攻击 (LLM分析)，消息已被拦截。")
                     
-                    self.config["llm_analysis_injection_count"] = 0
-                    self.last_llm_analysis_time = None # 检测到注入，停止不活跃计时器
-
+                    # 检测到注入，立即切换到活跃模式（如果不是），并重置不活跃计时器
+                    self.last_llm_analysis_time = None 
                     if current_llm_mode == "standby":
                         self.config["llm_analysis_mode"] = "active"
                         logger.info("LLM分析从待机状态转为活跃状态 (检测到注入)。")
@@ -211,21 +211,10 @@ class AntiPromptInjector(Star):
                     return
 
                 else: # LLM analysis result is "否" (not injected)
-                    self.last_llm_analysis_time = time.time() # LLM分析完成且未注入，重置不活跃计时器
-
-                    if current_llm_mode == "active":
-                        self.config["llm_analysis_injection_count"] += 1
-                        logger.info(f"LLM未检测到注入，连续未注入次数 (活跃模式): {self.config['llm_analysis_injection_count']}")
-                        
-                        if self.config["llm_analysis_injection_count"] >= 2: # 阈值 2
-                            logger.info("LLM已连续2次未检测到注入，自动切换到待机模式。")
-                            self.config["llm_analysis_mode"] = "standby"
-                            self.config["llm_analysis_injection_count"] = 0
-                            self.last_llm_analysis_time = None # 当连续未注入导致切换到待机时，重置不活跃计时器
-                    else: # current_llm_mode == "standby"
-                        logger.debug("LLM在待机模式下未检测到注入。")
-                        self.config["llm_analysis_injection_count"] = 0 # 待机模式下确保计数为0
-                        # self.last_llm_analysis_time 保持为 time.time()，因为 LLM 分析刚刚发生。
+                    # 未检测到注入，立即切换到待机模式，并重置不活跃计时器
+                    logger.info("LLM未检测到注入，切换到待机模式。")
+                    self.config["llm_analysis_mode"] = "standby"
+                    self.last_llm_analysis_time = None 
 
                     self.config.save_config()
                     return
@@ -233,7 +222,7 @@ class AntiPromptInjector(Star):
             except Exception as e:
                 logger.error(f"调用LLM进行注入分析时发生错误: {e}")
                 self.config["llm_analysis_mode"] = "standby"
-                self.config["llm_analysis_injection_count"] = 0
+                # self.config["llm_analysis_injection_count"] = 0 # 移除了计数器相关代码
                 self.config.save_config()
                 self.last_llm_analysis_time = None 
                 yield event.plain_result("⚠️ LLM注入分析功能出现错误，已自动进入待机状态。")
@@ -359,7 +348,7 @@ class AntiPromptInjector(Star):
             return
         
         self.config["llm_analysis_mode"] = "active"
-        self.config["llm_analysis_injection_count"] = 0
+        # self.config["llm_analysis_injection_count"] = 0 # 移除了计数器相关代码
         self.config.save_config()
         self.last_llm_analysis_time = time.time()
         yield event.plain_result("✅ LLM注入分析功能已开启 (活跃模式)。")
@@ -372,7 +361,7 @@ class AntiPromptInjector(Star):
             return
         
         self.config["llm_analysis_mode"] = "disabled"
-        self.config["llm_analysis_injection_count"] = 0
+        # self.config["llm_analysis_injection_count"] = 0 # 移除了计数器相关代码
         self.config.save_config()
         self.last_llm_analysis_time = None
         yield event.plain_result("✅ LLM注入分析功能已完全关闭。")
@@ -381,13 +370,15 @@ class AntiPromptInjector(Star):
     async def cmd_check_llm_analysis_state(self, event: AstrMessageEvent):
         """查看当前LLM注入分析的运行状态及相关计数。"""
         current_mode = self.config.get("llm_analysis_mode", "standby")
-        current_non_injection_count = self.config.get("llm_analysis_injection_count", 0) 
+        # current_non_injection_count = self.config.get("llm_analysis_injection_count", 0) # 移除了计数器相关代码
         status_msg = f"当前LLM注入分析状态：{current_mode}。"
         
         if current_mode == "active":
-            status_msg += f" (LLM将对每条消息进行分析；连续未检测到注入次数：{current_non_injection_count}/2。当连续未检测到注入次数达到2次，或不活跃时间超过5秒时，将自动切换到待机模式。)"
+            # 更新了状态描述，不再提及计数器
+            status_msg += " (LLM将对每条消息进行分析。如果5秒内没有LLM分析（未检测到注入）发生，将自动切换到待机模式。)"
         elif current_mode == "standby":
-            status_msg += f" (LLM处于待机模式，仅在消息明确指向机器人时触发分析；连续未检测到注入次数：{current_non_injection_count}/2。检测到注入时，将切换到活跃模式。)"
+            # 更新了状态描述，不再提及计数器
+            status_msg += " (LLM处于待机模式，仅在消息明确指向机器人或检测到注入时触发分析。检测到注入时，将切换到活跃模式；未检测到注入时，将切换回待机模式。)"
         elif current_mode == "disabled":
             status_msg += " (LLM分析已完全禁用，需要管理员手动开启)"
         yield event.plain_result(status_msg)
