@@ -195,7 +195,7 @@ class AntiPromptInjector(Star):
                     yield event.plain_result("⚠️ 检测到可能的注入攻击 (LLM分析)，消息已被拦截。")
                     
                     self.config["llm_analysis_injection_count"] = 0
-                    self.last_llm_analysis_time = None
+                    self.last_llm_analysis_time = None # 检测到注入，停止不活跃计时器
 
                     if current_llm_mode == "standby":
                         self.config["llm_analysis_mode"] = "active"
@@ -204,22 +204,22 @@ class AntiPromptInjector(Star):
                     self.config.save_config()
                     return
 
-                else:
-                    self.last_llm_analysis_time = time.time() 
+                else: # LLM analysis result is "否" (not injected)
+                    self.last_llm_analysis_time = time.time() # LLM分析完成且未注入，重置不活跃计时器
 
                     if current_llm_mode == "active":
                         self.config["llm_analysis_injection_count"] += 1
                         logger.info(f"LLM未检测到注入，连续未注入次数 (活跃模式): {self.config['llm_analysis_injection_count']}")
                         
-                        # 如果连续未检测到注入的次数达到2次，则自动切换到待机模式
                         if self.config["llm_analysis_injection_count"] >= 2: # 阈值 2
                             logger.info("LLM已连续2次未检测到注入，自动切换到待机模式。")
                             self.config["llm_analysis_mode"] = "standby"
                             self.config["llm_analysis_injection_count"] = 0
+                            self.last_llm_analysis_time = None # 当连续未注入导致切换到待机时，重置不活跃计时器
                     else: # current_llm_mode == "standby"
                         logger.debug("LLM在待机模式下未检测到注入。")
-                        self.config["llm_analysis_injection_count"] = 0
-                        self.last_llm_analysis_time = None
+                        self.config["llm_analysis_injection_count"] = 0 # 待机模式下确保计数为0
+                        # self.last_llm_analysis_time 保持为 time.time()，因为 LLM 分析刚刚发生。
 
                     self.config.save_config()
                     return
@@ -347,22 +347,6 @@ class AntiPromptInjector(Star):
         elif current_mode == "disabled":
             status_msg += " (LLM分析已完全禁用，需要管理员手动开启)"
         yield event.plain_result(status_msg)
-
-    @filter.command("反注入帮助")
-    async def cmd_help(self, event: AstrMessageEvent):
-        """显示反注入插件的所有可用命令及其说明。"""
-        msg = (
-            "🛡️ 反注入插件命令：\n"
-            "/添加防注入白名单ID <ID> (需要管理员权限)\n"
-            "/移除防注入白名单ID <ID> (需要管理员权限)\n"
-            "/查看防注入白名单\n"
-            "/查看管理员状态\n"
-            "/开启LLM注入分析 (需要管理员权限)\n"
-            "/关闭LLM注入分析 (需要管理员权限)\n"
-            "/LLM分析状态\n"
-            "/反注入帮助\n"
-        )
-        yield event.plain_result(msg)
 
     async def terminate(self):
         """插件终止时调用，用于清理资源。"""
