@@ -1,7 +1,7 @@
 # AntiPromptInjector 插件
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/oyxning/oyxning/refs/heads/main/AntiPromptInjectorlogo.png" alt="LumineStory Banner" width="100%" style="border-radius: 8px;" />
+  <img src="https://raw.githubusercontent.com/oyxning/oyxning/refs/heads/main/sakisaki2.jpg" alt="插件头图" width="200">
 </p>
 
 > **还在因为自己的 Bot 被调教成猫娘而烦恼吗？**  
@@ -28,13 +28,11 @@
 
 ## 🧩 插件功能
 
-- ✅ **拦截多种常见的注入攻击提示词**（如伪装成 system、角色扮演设定等）
-- ✅ **识别伪造管理员语气内容并替换**
-- ✅ **权限与 AstrBot 全局管理员绑定**：白名单管理命令需要 AstrBot 的全局管理员权限。
-- ✅ **支持设置白名单用户**：白名单中的用户将不受注入检测拦截。
-- ✅ **支持指令管理白名单**。
-- ✅ **支持 LLM 注入分析功能**，可根据模式（活跃、待机、禁用）动态调整。
-- ✅ **插件配置统一由 AstrBot 框架管理和持久化**，无需自行生成和维护额外的 JSON 文件。
+- ✅ **拦截多种常见的注入攻击提示词**（如伪造系统消息、角色扮演、越狱、敏感内容等）
+- ✅ **支持 LLM 注入分析**，群聊/私聊可独立配置，自动切换活跃/待机/禁用模式
+- ✅ **支持白名单机制**，全局管理员和白名单用户可跳过检测
+- ✅ **防止恶意修改 LLM 系统提示词**，仅允许系统或管理员设置
+- ✅ **所有配置由 AstrBot 框架统一管理和持久化**
 
 ---
 
@@ -47,27 +45,25 @@
 
 ## ⚙️ 插件配置
 
-本插件的配置完全由 AstrBot 框架统一管理。您可以在 AstrBot 的 WebUI 管理面板中找到 AntiPromptInjector 插件并进行配置。
+所有配置均可在 AstrBot WebUI 管理面板中完成。
 
-### 主要可配置项
-
-- **`enabled`** (布尔值)：是否启用反注入攻击插件。
-- **`whitelist`** (列表)：白名单用户 ID 列表，这些用户将默认不被注入检测拦截。
-- **`llm_analysis_mode`** (字符串)：LLM 注入分析模式，可选值为 `active`（活跃）、`standby`（待机）和 `disabled`（禁用）。
-- **`llm_analysis_injection_count`** (整数)：记录 LLM 连续检测到注入的次数。
+- **`enabled`** (布尔值)：是否启用插件
+- **`whitelist`** (列表)：白名单用户 ID
+- **`llm_analysis_mode`** (字符串)：LLM 注入分析模式（`active`/`standby`/`disabled`）
+- **`llm_analysis_private_chat_enabled`** (布尔值)：是否启用私聊 LLM 注入分析
 
 ---
 
 ## 📜 插件命令
 
-- `/添加防注入白名单ID <ID>` - 添加指定用户 ID 到白名单（需要管理员权限）。
-- `/移除防注入白名单ID <ID>` - 从白名单中移除指定用户 ID（需要管理员权限）。
-- `/查看防注入白名单` - 查看当前白名单用户。
-- `/查看管理员状态` - 检查当前用户是否为 AstrBot 全局管理员。
-- `/开启LLM注入分析` - 开启 LLM 注入分析功能（需要管理员权限）。
-- `/关闭LLM注入分析` - 关闭 LLM 注入分析功能（需要管理员权限）。
-- `/LLM分析状态` - 查看当前 LLM 注入分析的运行状态。
-- `/反注入帮助` - 显示插件的帮助信息。
+- `/添加防注入白名单ID <ID>` 添加指定用户 ID 到白名单（管理员）
+- `/移除防注入白名单ID <ID>` 从白名单中移除指定用户 ID（管理员）
+- `/查看防注入白名单` 查看当前白名单用户
+- `/查看管理员状态` 检查当前用户是否为 AstrBot 全局管理员或白名单用户
+- `/开启LLM注入分析` 开启 LLM 注入分析（管理员）
+- `/关闭LLM注入分析` 关闭 LLM 注入分析（管理员）
+- `/LLM分析状态` 查看当前 LLM 注入分析状态及私聊分析开关
+- `/反注入帮助` 显示插件所有命令及说明
 
 ---
 
@@ -75,8 +71,8 @@
 
 - 插件名：AntiPromptInjector
 - 作者：LumineStory
-- 描述：屏蔽伪系统注入攻击的插件
-- 版本：1.0.0
+- 描述：一个用于阻止提示词注入攻击的插件
+- 版本：1.0.1
 
 ---
 
