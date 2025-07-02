@@ -3,7 +3,7 @@ import asyncio
 import time
 from typing import Dict, Any
 
-from astrbot.api.event import filter, AstrMessageEvent, LLMRequestEvent
+from astrbot.api.event import filter, AstrMessageEvent, LLMPreRequestEvent
 from astrbot.api.provider import ProviderRequest
 from astrbot.api.star import Context, Star, register
 from astrbot.api import logger, AstrBotConfig
@@ -317,7 +317,7 @@ class AntiPromptInjector(Star):
 
     # --- 修复 on_llm_request 的事件类型 ---
     @filter.on_llm_request()
-    async def block_llm_modifications(self, event: LLMRequestEvent, req: ProviderRequest):
+    async def block_llm_modifications(self, event: LLMPreRequestEvent, req: ProviderRequest):
         if not self.plugin_enabled:
             return
         
