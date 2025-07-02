@@ -214,7 +214,7 @@ class AntiPromptInjector(Star):
                     self.config.save_config()
                     self.last_llm_analysis_time = None
 
-    @filter.on_llm_request(priority=1)
+    @filter.on_llm_request(priority=-999) # 抢占最高优先级
     async def intercept_llm_request(self, event: AstrMessageEvent, req: ProviderRequest):
         try:
             if not self.plugin_enabled:
@@ -288,8 +288,8 @@ class AntiPromptInjector(Star):
                     self.last_llm_analysis_time = time.time()
                 return
 
-        except InjectionDetectedException as e:
-            # 捕获我们自己抛出的异常，销毁请求，终止事件传播，然后返回
+        except InjectionDetectedException:
+            # 捕获我们自己抛出的异常，销毁请求，终止事件传播
             await self._neutralize_request(req)
             event.stop_event()
             # 不需要再向上抛出，因为我们已经处理了所有必要的操作
@@ -303,7 +303,7 @@ class AntiPromptInjector(Star):
             await event.send(event.plain_result("⚠️ 安全分析服务暂时出现问题，为保障安全，您的请求已被拦截。"))
             event.stop_event()
             
-            if is_group_message and self.config.get("llm_analysis_mode") != "disabled":
+            if 'is_group_message' in locals() and is_group_message and self.config.get("llm_analysis_mode") != "disabled":
                 self.config["llm_analysis_mode"] = "standby"
                 self.config.save_config()
                 self.last_llm_analysis_time = None
