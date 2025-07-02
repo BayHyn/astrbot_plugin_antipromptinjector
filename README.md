@@ -72,7 +72,7 @@
 - 插件名：AntiPromptInjector
 - 作者：LumineStory
 - 描述：一个用于阻止提示词注入攻击的插件
-- 版本：1.0.3
+- 版本：2.0.0
 
 ---
 

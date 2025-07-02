@@ -10,7 +10,7 @@ from astrbot.api.star import Context, Star, register
 from astrbot.api import logger, AstrBotConfig
 from astrbot.api.all import MessageType
 
-# --- 全新科技感状态面板: 基于Canvas绘制 (视觉革新版) ---
+# --- 全新科技感状态面板: 基于Canvas绘制 (视觉革新最终版) ---
 CANVAS_STATUS_PANEL_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -18,20 +18,20 @@ CANVAS_STATUS_PANEL_TEMPLATE = """
 <meta charset="UTF-8">
 <style>
     /* 引入更具设计感的字体 */
-    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&family=Noto+Sans+SC:wght@300;400;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Noto+Sans+SC:wght@300;400;700&display=swap');
     body {
         margin: 0;
-        background: #0d1117; /* 使用更纯粹的GitHub暗色背景 */
+        background: #10121a; /* 使用纯色背景，避免不必要的边距 */
         display: flex;
-        justify-content: center; /* 水平居中 */
-        align-items: center;    /* 垂直居中 */
-        padding: 20px 0; /* 为画布提供垂直边距 */
+        justify-content: center;
+        align-items: center;
+        padding: 20px 0;
     }
 </style>
 </head>
 <body>
     <!-- 优化画布尺寸，使其更适合展示，并居中显示 -->
-    <canvas id="statusPanel" width="680" height="400"></canvas>
+    <canvas id="statusPanel" width="720" height="420"></canvas>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -75,66 +75,72 @@ CANVAS_STATUS_PANEL_TEMPLATE = """
 
             // --- 绘制开始 ---
             // 1. 绘制主背景
-            ctx.fillStyle = '#0d1117';
+            ctx.fillStyle = '#10121a';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             // 2. 绘制标题 (全中文，居中)
-            ctx.font = "700 30px 'Noto Sans SC', sans-serif";
-            ctx.fillStyle = '#c9d1d9';
+            ctx.font = "700 32px 'Noto Sans SC', sans-serif";
+            ctx.fillStyle = '#dfe3ec';
             ctx.textAlign = 'center'; // 文字居中对齐
-            ctx.fillText("🛡️ 注入防御系统状态", canvas.width / 2, 60);
+            ctx.shadowColor = 'rgba(66, 133, 244, 0.5)';
+            ctx.shadowBlur = 15;
+            ctx.fillText("🛡️ 注入防御系统状态", canvas.width / 2, 70);
+            ctx.shadowBlur = 0;
 
             // 3. 绘制状态模块
             function drawStatusBlock(x, y, title, status, description, statusColor) {
                 // 绘制块背景 (玻璃拟态效果)
-                ctx.fillStyle = 'rgba(45, 51, 74, 0.3)';
-                ctx.strokeStyle = 'rgba(139, 148, 158, 0.2)';
-                ctx.lineWidth = 1;
-                drawRoundRect(x, y, 300, 160, 12).fill();
-                drawRoundRect(x, y, 300, 160, 12).stroke();
+                ctx.fillStyle = 'rgba(28, 33, 53, 0.5)';
+                ctx.strokeStyle = 'rgba(80, 89, 121, 0.3)';
+                ctx.lineWidth = 1.5;
+                drawRoundRect(x, y, 320, 160, 12).fill();
+                drawRoundRect(x, y, 320, 160, 12).stroke();
 
                 // 绘制块标题
                 ctx.textAlign = 'left'; // 重置对齐方式
-                ctx.font = "700 18px 'Noto Sans SC', sans-serif";
-                ctx.fillStyle = '#88a2d3';
-                ctx.fillText(title, x + 25, y + 40);
+                ctx.font = "700 20px 'Noto Sans SC', sans-serif";
+                ctx.fillStyle = '#a6c1ff'; // 柔和的蓝色
+                ctx.fillText(title, x + 30, y + 45);
 
                 // 绘制分割线
                 ctx.beginPath();
-                ctx.moveTo(x + 25, y + 58);
-                ctx.lineTo(x + 275, y + 58);
-                ctx.strokeStyle = 'rgba(139, 148, 158, 0.2)';
+                ctx.moveTo(x + 30, y + 65);
+                ctx.lineTo(x + 290, y + 65);
+                ctx.strokeStyle = 'rgba(80, 89, 121, 0.2)';
                 ctx.stroke();
 
                 // 绘制状态值
-                ctx.font = "700 28px 'Roboto', sans-serif";
+                ctx.font = "700 32px 'Roboto', sans-serif";
                 ctx.fillStyle = statusColor;
-                ctx.fillText(status, x + 25, y + 98);
+                ctx.fillText(status, x + 30, y + 105);
 
                 // 绘制状态描述
-                ctx.font = "300 14px 'Noto Sans SC', sans-serif";
-                ctx.fillStyle = '#8b949e';
-                wrapText(description, x + 25, y + 128, 250, 22);
+                ctx.font = "300 15px 'Noto Sans SC', sans-serif";
+                ctx.fillStyle = '#a0a8b9';
+                wrapText(description, x + 30, y + 135, 260, 24);
             }
             
             // 绘制群聊模块
-            drawStatusBlock(30, 110, "群聊扫描模块", data.current_mode, data.mode_description, data.mode_color);
+            drawStatusBlock(30, 120, "群聊扫描模块", data.current_mode, data.mode_description, data.mode_color);
             // 绘制私聊模块
-            drawStatusBlock(350, 110, "私聊扫描模块", data.private_chat_status, data.private_chat_description, data.private_color);
+            drawStatusBlock(370, 120, "私聊扫描模块", data.private_chat_status, data.private_chat_description, data.private_color);
 
             // 4. 绘制底部安全提示
+            ctx.fillStyle = 'rgba(28, 33, 53, 0.5)';
+            drawRoundRect(30, 310, 660, 80, 12).fill();
+
             ctx.textAlign = 'left';
-            ctx.font = "400 13px 'Noto Sans SC', sans-serif";
-            ctx.fillStyle = '#8b949e';
+            ctx.font = "400 15px 'Noto Sans SC', sans-serif";
+            ctx.fillStyle = '#d29922'; // 黄色警告
             const disclaimer = "⚠️ 安全提示：本插件为辅助安全工具，无法完全替代主动安全策略。为了您的资产安全，请持续关注机器人状态。";
-            wrapText(disclaimer, 45, 330, 590, 20);
+            wrapText(disclaimer, 50, 340, 620, 24);
         });
     </script>
 </body>
 </html>
 """
 
-@register("antipromptinjector", "LumineStory", "一个用于阻止提示词注入攻击的插件", "1.0.3") 
+@register("antipromptinjector", "LumineStory", "一个用于阻止提示词注入攻击的插件", "2.0.0") 
 class AntiPromptInjector(Star):
     def __init__(self, context: Context, config: AstrBotConfig = None):
         super().__init__(context)
@@ -222,6 +228,7 @@ class AntiPromptInjector(Star):
     @filter.event_message_type(filter.EventMessageType.ALL)
     async def detect_prompt_injection(self, event: AstrMessageEvent):
         message_content = event.get_message_str().strip()
+        # 修正逻辑：确保命令及其参数不被审核
         if message_content.startswith('/'):
             logger.debug(f"检测到命令消息: {message_content}. 跳过注入检测。")
             return
@@ -435,13 +442,13 @@ class AntiPromptInjector(Star):
 
         # 准备传递给模板的数据
         status_map: Dict[str, Dict[str, str]] = {
-            "active": {"text": "活跃", "color": "#ff757f", "desc": "将对每条群聊消息进行分析。若5秒内无分析活动，将自动切换到待机模式。"},
-            "standby": {"text": "待机", "color": "#e0af68", "desc": "仅在群聊消息明确指向机器人或检测到注入时触发分析。"},
-            "disabled": {"text": "禁用", "color": "#565f89", "desc": "所有群聊消息将跳过AI安全扫描。"}
+            "active": {"text": "活跃", "color": "#f47075", "desc": "将对每条群聊消息进行分析。若5秒内无分析活动，将自动切换到待机模式。"},
+            "standby": {"text": "待机", "color": "#f8c377", "desc": "仅在群聊消息明确指向机器人或检测到注入时触发分析。"},
+            "disabled": {"text": "禁用", "color": "#7a829c", "desc": "所有群聊消息将跳过AI安全扫描。"}
         }
         private_status_map: Dict[bool, Dict[str, str]] = {
-            True: {"text": "已启用", "color": "#9ece6a", "desc": "所有私聊消息都将进行LLM安全分析，不受群聊模式影响。"},
-            False: {"text": "已禁用", "color": "#565f89", "desc": "所有私聊消息将跳过LLM分析，以节约资源。"}
+            True: {"text": "已启用", "color": "#89ca78", "desc": "所有私聊消息都将进行LLM安全分析，不受群聊模式影响。"},
+            False: {"text": "已禁用", "color": "#7a829c", "desc": "所有私聊消息将跳过LLM分析，以节约资源。"}
         }
         
         mode_data = status_map.get(current_mode, status_map["standby"])
@@ -488,4 +495,5 @@ class AntiPromptInjector(Star):
                 await self.monitor_task
             except asyncio.CancelledError:
                 logger.info("LLM不活跃监控任务已取消。")
-        logger.info("AntiPromptInjector 插件已终止
+        # 修正了之前版本中的语法错误
+        logger.info("AntiPromptInjector 插件已终止。")
