@@ -10,31 +10,35 @@ from astrbot.api.star import Context, Star, register
 from astrbot.api import logger, AstrBotConfig
 from astrbot.api.all import MessageType
 
-# --- 全新科技感状态面板: 基于Canvas绘制 ---
+# --- 全新科技感状态面板: 基于Canvas绘制 (视觉革新版) ---
 CANVAS_STATUS_PANEL_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <style>
-    /* 引入科技感字体和通用中文字体 */
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Noto+Sans+SC:wght@300;400;700&display=swap');
+    /* 引入更具设计感的字体 */
+    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&family=Noto+Sans+SC:wght@300;400;700&display=swap');
     body {
         margin: 0;
-        background: #12141d; /* 使用纯色背景，避免不必要的边距 */
+        background: #0d1117; /* 使用更纯粹的GitHub暗色背景 */
+        display: flex;
+        justify-content: center; /* 水平居中 */
+        align-items: center;    /* 垂直居中 */
+        padding: 20px 0; /* 为画布提供垂直边距 */
     }
 </style>
 </head>
 <body>
-    <!-- Canvas画布，所有内容将在这里绘制。优化尺寸以获得更佳清晰度 -->
-    <canvas id="statusPanel" width="650" height="430"></canvas>
+    <!-- 优化画布尺寸，使其更适合展示，并居中显示 -->
+    <canvas id="statusPanel" width="680" height="400"></canvas>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const canvas = document.getElementById('statusPanel');
             const ctx = canvas.getContext('2d');
 
-            // 从Jinja2模板中获取数据 (安全地转为JSON字符串)
+            // 从Jinja2模板中获取数据
             const data = {{ data_json }};
 
             // --- 辅助函数 ---
@@ -71,31 +75,26 @@ CANVAS_STATUS_PANEL_TEMPLATE = """
 
             // --- 绘制开始 ---
             // 1. 绘制主背景
-            ctx.fillStyle = '#12141d';
+            ctx.fillStyle = '#0d1117';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 2. 绘制标题 (全中文)
-            ctx.font = "700 28px 'Orbitron', sans-serif";
+            // 2. 绘制标题 (全中文，居中)
+            ctx.font = "700 30px 'Noto Sans SC', sans-serif";
             ctx.fillStyle = '#c9d1d9';
-            ctx.shadowColor = 'rgba(187, 154, 247, 0.5)';
-            ctx.shadowBlur = 10;
-            ctx.fillText("注入防御系统", 110, 60);
-            ctx.shadowBlur = 0;
-
-            // 绘制标题前的盾牌图标
-            ctx.font = "36px sans-serif";
-            ctx.fillText("🛡️", 50, 65);
+            ctx.textAlign = 'center'; // 文字居中对齐
+            ctx.fillText("🛡️ 注入防御系统状态", canvas.width / 2, 60);
 
             // 3. 绘制状态模块
             function drawStatusBlock(x, y, title, status, description, statusColor) {
-                // 绘制块背景
-                ctx.fillStyle = 'rgba(45, 51, 74, 0.5)';
-                ctx.strokeStyle = '#30363d';
+                // 绘制块背景 (玻璃拟态效果)
+                ctx.fillStyle = 'rgba(45, 51, 74, 0.3)';
+                ctx.strokeStyle = 'rgba(139, 148, 158, 0.2)';
                 ctx.lineWidth = 1;
-                drawRoundRect(x, y, 285, 160, 8).fill();
-                drawRoundRect(x, y, 285, 160, 8).stroke();
+                drawRoundRect(x, y, 300, 160, 12).fill();
+                drawRoundRect(x, y, 300, 160, 12).stroke();
 
                 // 绘制块标题
+                ctx.textAlign = 'left'; // 重置对齐方式
                 ctx.font = "700 18px 'Noto Sans SC', sans-serif";
                 ctx.fillStyle = '#88a2d3';
                 ctx.fillText(title, x + 25, y + 40);
@@ -103,41 +102,32 @@ CANVAS_STATUS_PANEL_TEMPLATE = """
                 // 绘制分割线
                 ctx.beginPath();
                 ctx.moveTo(x + 25, y + 58);
-                ctx.lineTo(x + 260, y + 58);
-                ctx.strokeStyle = '#30363d';
+                ctx.lineTo(x + 275, y + 58);
+                ctx.strokeStyle = 'rgba(139, 148, 158, 0.2)';
                 ctx.stroke();
 
                 // 绘制状态值
-                ctx.font = "700 26px 'Orbitron', sans-serif";
+                ctx.font = "700 28px 'Roboto', sans-serif";
                 ctx.fillStyle = statusColor;
-                ctx.shadowColor = statusColor;
-                ctx.shadowBlur = 12;
-                ctx.fillText(status, x + 25, y + 95);
-                ctx.shadowBlur = 0;
+                ctx.fillText(status, x + 25, y + 98);
 
                 // 绘制状态描述
                 ctx.font = "300 14px 'Noto Sans SC', sans-serif";
                 ctx.fillStyle = '#8b949e';
-                wrapText(description, x + 25, y + 125, 240, 20);
+                wrapText(description, x + 25, y + 128, 250, 22);
             }
             
             // 绘制群聊模块
             drawStatusBlock(30, 110, "群聊扫描模块", data.current_mode, data.mode_description, data.mode_color);
             // 绘制私聊模块
-            drawStatusBlock(335, 110, "私聊扫描模块", data.private_chat_status, data.private_chat_description, data.private_color);
+            drawStatusBlock(350, 110, "私聊扫描模块", data.private_chat_status, data.private_chat_description, data.private_color);
 
             // 4. 绘制底部安全提示
-            ctx.fillStyle = 'rgba(45, 51, 74, 0.5)';
-            drawRoundRect(30, 310, 590, 80, 8).fill();
-            
-            ctx.font = "700 16px 'Noto Sans SC', sans-serif";
-            ctx.fillStyle = '#d29922'; // 黄色警告
-            ctx.fillText("⚠️ 安全提示", 45, 340);
-
-            ctx.font = "400 14px 'Noto Sans SC', sans-serif";
+            ctx.textAlign = 'left';
+            ctx.font = "400 13px 'Noto Sans SC', sans-serif";
             ctx.fillStyle = '#8b949e';
-            const disclaimer = "本插件为辅助安全工具，无法完全替代主动安全策略。为了您的资产安全，请持续关注机器人状态。";
-            wrapText(disclaimer, 45, 365, 560, 22);
+            const disclaimer = "⚠️ 安全提示：本插件为辅助安全工具，无法完全替代主动安全策略。为了您的资产安全，请持续关注机器人状态。";
+            wrapText(disclaimer, 45, 330, 590, 20);
         });
     </script>
 </body>
