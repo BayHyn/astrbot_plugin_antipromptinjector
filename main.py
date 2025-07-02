@@ -17,11 +17,10 @@ CANVAS_STATUS_PANEL_TEMPLATE = """
 <head>
 <meta charset="UTF-8">
 <style>
-    /* 引入更清晰的现代字体 */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap');
     body {
         margin: 0;
-        background: #f6f8fa; /* 干净的浅灰色背景 */
+        background: #f6f8fa;
         display: flex;
         justify-content: center;
         align-items: center;
@@ -30,15 +29,11 @@ CANVAS_STATUS_PANEL_TEMPLATE = """
 </style>
 </head>
 <body>
-    <!-- 优化画布尺寸，确保内容清晰且布局舒适 -->
     <canvas id="statusPanel" width="720" height="440"></canvas>
-
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const canvas = document.getElementById('statusPanel');
             const ctx = canvas.getContext('2d');
-
-            // 从Jinja2模板中获取数据
             const data = {{ data_json }};
 
             // --- 辅助函数 ---
@@ -54,80 +49,96 @@ CANVAS_STATUS_PANEL_TEMPLATE = """
                 ctx.closePath();
                 return ctx;
             }
-            
-            function wrapText(text, x, y, maxWidth, lineHeight) {
-                const words = text.split('');
+
+            // 自适应字体大小
+            function fitText(text, fontBase, fontFamily, maxWidth, maxFont, minFont) {
+                let fontSize = maxFont;
+                ctx.font = `700 ${fontSize}px ${fontFamily}`;
+                let width = ctx.measureText(text).width;
+                while (width > maxWidth && fontSize > minFont) {
+                    fontSize -= 1;
+                    ctx.font = `700 ${fontSize}px ${fontFamily}`;
+                    width = ctx.measureText(text).width;
+                }
+                return fontSize;
+            }
+
+            // 自适应换行
+            function wrapTextAuto(text, x, y, maxWidth, lineHeight, font) {
+                ctx.font = font;
+                let lines = [];
                 let line = '';
-                for(let n = 0; n < words.length; n++) {
-                    let testLine = line + words[n];
+                for (let i = 0; i < text.length; i++) {
+                    let testLine = line + text[i];
                     let metrics = ctx.measureText(testLine);
-                    let testWidth = metrics.width;
-                    if (testWidth > maxWidth && n > 0) {
-                        ctx.fillText(line, x, y);
-                        line = words[n];
-                        y += lineHeight;
+                    if (metrics.width > maxWidth && line.length > 0) {
+                        lines.push(line);
+                        line = text[i];
                     } else {
                         line = testLine;
                     }
                 }
-                ctx.fillText(line, x, y);
+                lines.push(line);
+                for (let i = 0; i < lines.length; i++) {
+                    ctx.fillText(lines[i], x, y + i * lineHeight);
+                }
             }
 
             // --- 绘制开始 ---
-            // 1. 绘制主背景
             ctx.fillStyle = '#f6f8fa';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 2. 绘制标题 (全中文，居中，字体清晰)
-            ctx.font = "700 36px 'Noto Sans SC', sans-serif";
+            // 标题自适应
+            let title = "🛡️ 注入防御系统状态";
+            let titleFontSize = fitText(title, 36, "'Noto Sans SC', sans-serif", canvas.width - 60, 36, 22);
+            ctx.font = `700 ${titleFontSize}px 'Noto Sans SC', sans-serif`;
             ctx.fillStyle = '#1f2328';
             ctx.textAlign = 'center';
-            ctx.fillText("🛡️ 注入防御系统状态", canvas.width / 2, 80);
+            ctx.fillText(title, canvas.width / 2, 80);
 
-            // 3. 绘制状态模块
+            // 绘制状态模块
             function drawStatusBlock(x, y, title, status, description, statusColor) {
-                // 绘制块背景
                 ctx.fillStyle = '#ffffff';
                 ctx.strokeStyle = '#d0d7de';
                 ctx.lineWidth = 1;
                 drawRoundRect(x, y, 320, 180, 12).fill();
                 drawRoundRect(x, y, 320, 180, 12).stroke();
 
-                // 绘制块标题
+                // 块标题自适应
+                let blockTitleFontSize = fitText(title, 22, "'Noto Sans SC', sans-serif", 260, 22, 16);
                 ctx.textAlign = 'left';
-                ctx.font = "700 22px 'Noto Sans SC', sans-serif";
+                ctx.font = `700 ${blockTitleFontSize}px 'Noto Sans SC', sans-serif`;
                 ctx.fillStyle = '#1f2328';
                 ctx.fillText(title, x + 30, y + 50);
 
-                // 绘制分割线
+                // 分割线
                 ctx.beginPath();
                 ctx.moveTo(x + 30, y + 70);
                 ctx.lineTo(x + 290, y + 70);
                 ctx.strokeStyle = '#d0d7de';
                 ctx.stroke();
 
-                // 绘制状态值 (显著增大字体)
-                ctx.font = "700 40px 'Inter', sans-serif";
+                // 状态值自适应
+                let statusFontSize = fitText(status, 40, "'Inter', sans-serif", 260, 40, 22);
+                ctx.font = `700 ${statusFontSize}px 'Inter', sans-serif`;
                 ctx.fillStyle = statusColor;
                 ctx.fillText(status, x + 30, y + 120);
 
-                // 绘制状态描述
+                // 描述自适应
                 ctx.font = "400 16px 'Noto Sans SC', sans-serif";
                 ctx.fillStyle = '#57606a';
-                wrapText(description, x + 30, y + 155, 260, 25);
+                wrapTextAuto(description, x + 30, y + 155, 260, 22, "400 16px 'Noto Sans SC', sans-serif");
             }
-            
-            // 绘制群聊模块
+
             drawStatusBlock(30, 130, "群聊扫描模块", data.current_mode, data.mode_description, data.mode_color);
-            // 绘制私聊模块
             drawStatusBlock(370, 130, "私聊扫描模块", data.private_chat_status, data.private_chat_description, data.private_color);
 
-            // 4. 绘制底部安全提示
+            // 底部安全提示自适应
             ctx.textAlign = 'center';
             ctx.font = "400 15px 'Noto Sans SC', sans-serif";
             ctx.fillStyle = '#6e7781';
             const disclaimer = "安全提示：本插件为辅助安全工具，无法完全替代主动安全策略。为了您的资产安全，请持续关注机器人状态。";
-            wrapText(disclaimer, canvas.width / 2, 360, 660, 24);
+            wrapTextAuto(disclaimer, canvas.width / 2, 360, 660, 22, "400 15px 'Noto Sans SC', sans-serif");
         });
     </script>
 </body>
