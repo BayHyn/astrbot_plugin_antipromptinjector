@@ -18,8 +18,8 @@ STATUS_PANEL_TEMPLATE = """
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Noto+Sans+SC:wght@300;400;700&display=swap');
     body {
         font-family: 'Noto Sans SC', sans-serif;
-        background: #1a1b26; /* 深邃的午夜蓝背景 */
-        color: #a9b1d6; /* 柔和的文本颜色 */
+        background: #1a1b26;
+        color: #a9b1d6;
         margin: 0;
         padding: 24px;
         display: flex;
@@ -27,69 +27,68 @@ STATUS_PANEL_TEMPLATE = """
         align-items: center;
     }
     .panel {
-        width: 600px;
-        background: rgba(36, 40, 59, 0.8); /* 半透明的深色背景 */
+        width: 700px;
+        background: rgba(36, 40, 59, 0.85);
         border: 1px solid #3b4261;
-        border-radius: 12px;
-        box-shadow: 0 0 25px rgba(125, 207, 255, 0.2);
-        backdrop-filter: blur(10px);
-        padding: 28px;
+        border-radius: 16px;
+        box-shadow: 0 0 32px rgba(125, 207, 255, 0.25);
+        backdrop-filter: blur(12px);
+        padding: 36px;
     }
     .header {
         display: flex;
         align-items: center;
-        border-bottom: 1px solid #3b4261;
-        padding-bottom: 15px;
-        margin-bottom: 20px;
+        border-bottom: 1.5px solid #3b4261;
+        padding-bottom: 20px;
+        margin-bottom: 28px;
     }
     .header-icon {
-        font-size: 32px;
-        margin-right: 15px;
+        font-size: 44px;
+        margin-right: 22px;
         animation: pulse 2s infinite;
     }
     .header-title h1 {
         font-family: 'Orbitron', sans-serif;
-        font-size: 24px;
-        color: #bb9af7; /* 优雅的紫色标题 */
+        font-size: 32px;
+        color: #bb9af7;
         margin: 0;
-        letter-spacing: 2px;
-        text-shadow: 0 0 10px #bb9af7;
+        letter-spacing: 3px;
+        text-shadow: 0 0 14px #bb9af7;
     }
     .status-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 20px;
+        gap: 32px;
     }
     .status-block {
         background: #24283b;
-        border-radius: 8px;
-        padding: 20px;
-        border: 1px solid #3b4261;
+        border-radius: 12px;
+        padding: 32px 28px;
+        border: 1.5px solid #3b4261;
     }
     .status-block h2 {
-        font-size: 16px;
-        color: #7dcfff; /* 清澈的青色副标题 */
-        margin: 0 0 12px 0;
+        font-size: 22px;
+        color: #7dcfff;
+        margin: 0 0 18px 0;
         font-weight: 700;
         border-bottom: 1px solid #3b4261;
-        padding-bottom: 8px;
+        padding-bottom: 10px;
     }
     .status-block .value {
-        font-size: 20px;
-        font-weight: 700;
-        margin-bottom: 8px;
+        font-size: 32px;
+        font-weight: 800;
+        margin-bottom: 14px;
     }
     .status-block .description {
-        font-size: 13px;
+        font-size: 18px;
         color: #a9b1d6;
-        line-height: 1.6;
-        font-weight: 300;
+        line-height: 1.8;
+        font-weight: 400;
     }
-    /* 根据不同状态改变颜色 */
-    .value.active { color: #ff757f; text-shadow: 0 0 8px #ff757f; } /* 活跃-红色警告 */
-    .value.standby { color: #e0af68; } /* 待机-黄色 */
-    .value.disabled { color: #565f89; } /* 禁用-灰色 */
-    .value.enabled { color: #9ece6a; } /* 启用-绿色 */
+    .value.active { color: #ff757f; text-shadow: 0 0 10px #ff757f; }
+    .value.standby { color: #e0af68; }
+    .value.disabled { color: #565f89; }
+    .value.enabled { color: #9ece6a; }
 
     @keyframes pulse {
         0% { transform: scale(1); opacity: 0.8; }
