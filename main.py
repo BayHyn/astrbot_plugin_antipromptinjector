@@ -7,7 +7,9 @@ from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.provider import ProviderRequest
 from astrbot.api.star import Context, Star, register
 from astrbot.api import logger, AstrBotConfig
-from astrbot.api.all import MessageType, LLMPreRequestEvent
+from astrbot.api.all import MessageType
+# 修正：LLMPreRequestEvent 是核心管道事件，需从 core 路径导入
+from astrbot.core.pipeline.context import LLMPreRequestEvent
 
 # --- 全新设计的状态面板UI模板 ---
 STATUS_PANEL_TEMPLATE = """
@@ -315,7 +317,6 @@ class AntiPromptInjector(Star):
                 yield event.plain_result("⚠️ LLM注入分析功能出现错误，已自动进入待机状态。")
             return
 
-    # --- 修复 on_llm_request 的事件类型 ---
     @filter.on_llm_request()
     async def block_llm_modifications(self, event: LLMPreRequestEvent, req: ProviderRequest):
         if not self.plugin_enabled:
@@ -329,7 +330,6 @@ class AntiPromptInjector(Star):
                     req.system_prompt = "" # 清空恶意system_prompt
                     break
 
-    # --- 使用 get_command_args() 重构指令 ---
     @filter.command("添加防注入白名单ID", "apwladd")
     async def cmd_add_wl(self, event: AstrMessageEvent):
         if not event.is_admin(): 
@@ -382,7 +382,6 @@ class AntiPromptInjector(Star):
         ids = "\n".join(current_whitelist)
         yield event.plain_result(f"当前白名单用户：\n{ids}")
 
-    # --- 简化 cmd_check_admin 逻辑 ---
     @filter.command("查看管理员状态", "apadmin")
     async def cmd_check_admin(self, event: AstrMessageEvent):
         sender_id = event.get_sender_id()
@@ -412,7 +411,6 @@ class AntiPromptInjector(Star):
         self.config.save_config()
         yield event.plain_result("✅ LLM群聊注入分析功能已完全关闭。")
         
-    # --- 新增私聊分析控制指令 ---
     @filter.command("开启私聊LLM分析", "apprivateon")
     async def cmd_enable_private_analysis(self, event: AstrMessageEvent):
         if not event.is_admin():
@@ -462,7 +460,6 @@ class AntiPromptInjector(Star):
             logger.error(f"渲染LLM分析状态面板失败: {e}")
             yield event.plain_result("❌ 渲染状态面板时出错，请检查后台日志。")
 
-    # --- 优化帮助指令格式 ---
     @filter.command("反注入帮助", "aphelp")
     async def cmd_help(self, event: AstrMessageEvent):
         admin_cmds = (
@@ -502,4 +499,3 @@ class AntiPromptInjector(Star):
             except asyncio.CancelledError:
                 logger.info("LLM不活跃监控任务已取消。")
         logger.info("AntiPromptInjector 插件已终止。")
-
