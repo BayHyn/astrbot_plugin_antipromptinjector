@@ -237,16 +237,16 @@ class AntiPromptInjector(Star):
             return
         should_run_llm_analysis = False
         if event.get_group_id():
+            # 只有@机器人或唤醒词才允许LLM分析，普通消息一律不分析
+            if not getattr(event, "is_at_or_wake_command", False):
+                logger.debug(f"群聊消息未@机器人或唤醒词，跳过LLM分析。消息: {message_content[:30]}...")
+                return
             if current_llm_mode == "active":
                 should_run_llm_analysis = True
                 logger.debug("群聊LLM分析处于活跃模式，将进行分析。")
             elif current_llm_mode == "standby":
-                if event.is_at_or_wake_command:
-                    should_run_llm_analysis = True
-                    logger.info(f"群聊LLM分析从待机状态被用户消息触发 (明确指向机器人)。消息: {message_content[:30]}...")
-                else:
-                    logger.debug(f"群聊LLM分析在待机模式下未被触发 (非明确指向)。消息: {message_content[:30]}...")
-                    return
+                should_run_llm_analysis = True
+                logger.info(f"群聊LLM分析从待机状态被用户消息触发 (明确指向机器人)。消息: {message_content[:30]}...")
         elif event.get_message_type() == MessageType.FRIEND_MESSAGE:
             if private_chat_llm_enabled:
                 should_run_llm_analysis = True
