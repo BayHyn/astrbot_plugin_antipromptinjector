@@ -207,10 +207,11 @@ class AntiPromptInjector(Star):
     @filter.event_message_type(filter.EventMessageType.ALL)
     async def detect_prompt_injection(self, event: AstrMessageEvent):
         message_content = event.get_message_str().strip()
-        # 指令消息直接跳过所有检测和LLM分析
-        if message_content.startswith('/'):
-            logger.debug(f"检测到命令消息: {message_content}. 跳过注入检测和LLM分析。")
+        # 【核心修改】根据文档，使用 is_command 属性来可靠地判断消息是否为指令
+        if event.is_command:
+            logger.debug(f"检测到指令消息: '{message_content}'. 跳过注入检测和LLM分析。")
             return
+            
         if not self.plugin_enabled:
             return
         current_whitelist = self.config.get("whitelist", [])
