@@ -322,9 +322,18 @@ class AntiPromptInjector(Star):
             if getattr(msg, "role", None) == "user" and getattr(msg, "content", ""):
                 pass
 
+
+    def _is_admin_or_whitelist(self, event: AstrMessageEvent) -> bool:
+        """判断是否为管理员或白名单用户"""
+        if event.is_admin():
+            return True
+        sender_id = event.get_sender_id()
+        current_whitelist = self.config.get("whitelist", [])
+        return sender_id in current_whitelist
+
     @filter.command("添加防注入白名单ID")
     async def cmd_add_wl(self, event: AstrMessageEvent, target_id: str):
-        if not event.is_admin(): 
+        if not event.is_admin():
             yield event.plain_result("❌ 权限不足，只有管理员可操作。")
             return
         current_whitelist = self.config.get("whitelist", [])
@@ -338,7 +347,7 @@ class AntiPromptInjector(Star):
 
     @filter.command("移除防注入白名单ID")
     async def cmd_remove_wl(self, event: AstrMessageEvent, target_id: str):
-        if not event.is_admin(): 
+        if not event.is_admin():
             yield event.plain_result("❌ 权限不足，只有管理员可操作。")
             return
         current_whitelist = self.config.get("whitelist", [])
@@ -352,6 +361,9 @@ class AntiPromptInjector(Star):
 
     @filter.command("查看防注入白名单")
     async def cmd_view_wl(self, event: AstrMessageEvent):
+        if not self._is_admin_or_whitelist(event):
+            yield event.plain_result("❌ 权限不足，只有管理员或白名单用户可操作。")
+            return
         current_whitelist = self.config.get("whitelist", [])
         if not current_whitelist:
             yield event.plain_result("当前白名单为空。")
@@ -362,9 +374,7 @@ class AntiPromptInjector(Star):
     @filter.command("查看管理员状态")
     async def cmd_check_admin(self, event: AstrMessageEvent):
         sender_id = event.get_sender_id()
-        message_content = event.get_message_str().strip()
         current_whitelist = self.config.get("whitelist", [])
-        llm_provider_instance = self.context.get_using_provider()
         if event.is_admin():
             yield event.plain_result("✅ 您是 AstrBot 全局管理员。")
             logger.info(f"全局管理员 {sender_id} 查看管理员状态。")
@@ -373,24 +383,8 @@ class AntiPromptInjector(Star):
             yield event.plain_result("你是白名单用户但不是全局管理员。")
             logger.info(f"白名单用户 {sender_id} 查看管理员状态 (非全局管理员)。")
             return
-        logger.info(f"非管理员非白名单用户 {sender_id} 发送 /查看管理员状态。本插件将尝试通过LLM处理此消息。")
-        if llm_provider_instance:
-            try:
-                llm_prompt = f"用户发送了命令 '{message_content}'。请根据此命令内容进行回复。此命令并非针对您的内部指令，而是用户请求您作为AI进行处理。"
-                llm_response = await llm_provider_instance.text_chat(
-                    prompt=llm_prompt,
-                    session_id=event.get_session_id(), 
-                    contexts=[], 
-                    image_urls=[],
-                    func_tool=None,
-                    system_prompt="", 
-                )
-                yield event.plain_result(llm_response.completion_text)
-            except Exception as e:
-                logger.error(f"处理非管理员非白名单用户命令时LLM调用失败: {e}")
-                yield event.plain_result("抱歉，处理您的请求时LLM服务出现问题。")
-        else:
-            yield event.plain_result("抱歉，当前没有可用的LLM服务来处理您的请求。")
+        yield event.plain_result("❌ 权限不足，只有管理员或白名单用户可操作。")
+        logger.info(f"非管理员非白名单用户 {sender_id} 试图查看管理员状态，已拒绝。")
 
     @filter.command("开启LLM注入分析")
     async def cmd_enable_llm_analysis(self, event: AstrMessageEvent):
