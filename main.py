@@ -155,7 +155,7 @@ class AntiPromptInjector(Star):
             if not is_risky:
                 current_llm_mode = self.config.get("llm_analysis_mode", "standby")
                 if current_llm_mode == "disabled":
-                    return # LLM分析关闭，且正则未命中，直接放行
+                    return
 
                 private_chat_llm_enabled = self.config.get("llm_analysis_private_chat_enabled", False)
                 is_group_message = event.get_group_id() is not None
@@ -192,7 +192,7 @@ class AntiPromptInjector(Star):
 
         except InjectionDetectedException as e:
             await event.send(event.plain_result("⚠️ 检测到可能的注入攻击，请求已被拦截。"))
-            await self._apply_scorch_defense(req) # 拦截模式下，依然污染请求作为双保险
+            await self._apply_scorch_defense(req)
             event.stop_event()
         except Exception as e:
             logger.error(f"⚠️ [拦截] 注入分析时发生未知错误: {e}")
@@ -202,7 +202,7 @@ class AntiPromptInjector(Star):
     @filter.command("切换防护模式", is_admin=True)
     async def cmd_switch_defense_mode(self, event: AstrMessageEvent):
         modes = ["sentry", "aegis", "scorch", "intercept"]
-        mode_names = {"sentry": "哨兵模式 (极速)", "aegis": "神盾模式 (均衡)", "scorch": "焦土模式 (强硬)", "intercept": "拦截模式 (实验性)"}
+        mode_names = {"sentry": "哨兵模式 (极速)", "aegis": "神盾模式 (均衡)", "scorch": "焦土模式 (强硬)", "intercept": "拦截模式 (经典)"}
         
         current_mode = self.config.get("defense_mode", "sentry")
         current_index = modes.index(current_mode)
@@ -219,7 +219,7 @@ class AntiPromptInjector(Star):
             "sentry": {"name": "哨兵模式 (极速)", "desc": "仅进行正则匹配，对命中项采取'神盾'策略，性能最高。"},
             "aegis": {"name": "神盾模式 (均衡)", "desc": "引入LLM二次研判，对高风险请求注入最高安全指令，由主LLM裁决。"},
             "scorch": {"name": "焦土模式 (强硬)", "desc": "将所有高风险请求直接改写为拦截通知，提供最强硬防护。"},
-            "intercept": {"name": "拦截模式 (实验性)", "desc": "尝试直接终止事件，用于兼容未来的AstrBot版本。"}
+            "intercept": {"name": "拦截模式 (经典)", "desc": "检测到风险时，直接终止事件。此模式兼容性好，是经典的拦截策略。"}
         }
         defense_mode = self.config.get("defense_mode", "sentry")
         mode_info = mode_map.get(defense_mode)
@@ -254,7 +254,7 @@ class AntiPromptInjector(Star):
             "/移除防注入白名单ID <ID>\n"
             "/查看防注入白名单\n"
         )
-    # 其他指令处理函数保持不变
+
     def _is_admin_or_whitelist(self, event: AstrMessageEvent) -> bool:
         if event.is_admin(): return True
         return event.get_sender_id() in self.config.get("whitelist", [])
