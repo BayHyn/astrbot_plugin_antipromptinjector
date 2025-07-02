@@ -8,6 +8,7 @@ from astrbot.api.provider import ProviderRequest
 from astrbot.api.star import Context, Star, register
 from astrbot.api import logger, AstrBotConfig
 from astrbot.api.all import MessageType
+from astrbot.core.pipeline.context import PipelineContext
 
 STATUS_PANEL_TEMPLATE = """
 <!DOCTYPE html>
@@ -206,9 +207,11 @@ class AntiPromptInjector(Star):
 
     @filter.event_message_type(filter.EventMessageType.ALL)
     async def detect_prompt_injection(self, event: AstrMessageEvent):
+        pipeline_context = PipelineContext.get_context()
         message_content = event.get_message_str().strip()
-        # 【核心修改】根据文档，使用 is_command 属性来可靠地判断消息是否为指令
-        if event.is_command:
+        
+        # 【核心修改】使用 PipelineContext 来可靠地判断消息是否为指令
+        if pipeline_context.is_command:
             logger.debug(f"检测到指令消息: '{message_content}'. 跳过注入检测和LLM分析。")
             return
             
