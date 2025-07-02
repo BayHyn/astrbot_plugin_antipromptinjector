@@ -2,38 +2,46 @@
     "enabled": {
         "description": "是否启用反注入攻击插件功能。",
         "type": "bool",
-        "hint": "设置为 True 启用提示词注入拦截功能，设置为 False 关闭。即使插件启用，LLM分析功能也可独立控制。",
-        "default": true,
-        "obvious_hint": false
+        "hint": "设置为 True 启用提示词注入拦截功能，设置为 False 关闭。",
+        "default": true
     },
-    "initial_whitelist": {
-        "description": "插件的初始白名单用户ID列表。这些用户发送的消息将不会被注入检测拦截。白名单的管理权限由 AstrBot 全局管理员控制。",
-        "type": "list",
-        "items": {
-            "type": "string",
-            "description": "用户ID"
-        },
-        "default": [],
-        "obvious_hint": false
-    },
-    "llm_analysis_mode": {
-        "description": "LLM 注入分析模式。此模式控制是否使用大语言模型进行高级注入检测。",
+    "defense_mode": {
+        "description": "核心防御模式选择",
         "type": "string",
         "enum": [
-            {"value": "active", "label": "活跃（每条消息都分析）"},
-            {"value": "standby", "label": "待机（仅@机器人或检测到注入时分析）"},
-            {"value": "disabled", "label": "禁用（完全关闭分析）"}
+            {"value": "sentry", "label": "哨兵模式 (极速)"},
+            {"value": "aegis", "label": "神盾模式 (均衡)"},
+            {"value": "scorch", "label": "焦土模式 (强硬)"},
+            {"value": "intercept", "label": "拦截模式 (实验性)"}
+        ],
+        "default": "sentry",
+        "ui:widget": "select",
+        "hint": "选择插件的核心防御策略。\n- 哨兵模式: 仅进行最高速的正则匹配检测，对命中项采取'神盾'策略，性能最高。\n- 神盾模式: 在哨兵模式基础上，对可疑请求引入LLM二次研判，并为高风险请求注入最高安全指令，由主LLM进行最终裁决，兼顾安全与体验。\n- 焦土模式: 在神盾模式基础上，将所有被标记为高风险的请求，直接改写为拦截通知，提供最强硬的防护。\n- 拦截模式: 检测到风险时，尝试直接终止事件。此模式用于兼容未来可能修复了事件系统的AstrBot版本，当前版本下可能无法完全生效。\n可通过指令 /切换防护模式 快速切换。",
+        "obvious_hint": true
+    },
+    "initial_whitelist": {
+        "description": "插件的初始白名单用户ID列表。",
+        "type": "list",
+        "items": { "type": "string", "description": "用户ID" },
+        "default": []
+    },
+    "llm_analysis_mode": {
+        "description": "LLM 辅助分析模式 (用于神盾/焦土/拦截模式)",
+        "type": "string",
+        "enum": [
+            {"value": "active", "label": "活跃"},
+            {"value": "standby", "label": "待机"},
+            {"value": "disabled", "label": "禁用"}
         ],
         "default": "standby",
         "ui:widget": "select",
-        "hint": "选择 LLM 分析的运行模式。\n- 活跃: LLM分析功能对每条消息进行分析。如果5秒内没有LLM分析发生（即没有检测到注入），将自动切换到待机。\n- 待机: 仅在群聊消息明确指向机器人或检测到注入时触发LLM分析。检测到注入时，将切换到活跃；未检测到注入时，将立即切换回待机。\n- 禁用: 完全关闭 LLM 分析功能，不进行任何 LLM 调用。\n重要提示：启用 LLM 分析模式将消耗您绑定的 LLM 服务的 token。建议在需要时开启。",
+        "hint": "控制LLM辅助分析的运行模式。\n- 活跃: 对每条消息都进行LLM辅助分析。\n- 待机: 仅在@机器人或检测到注入时进行LLM辅助分析。\n- 禁用: 完全关闭LLM辅助分析，此时神盾/焦土/拦截模式仅依赖正则判断。",
         "obvious_hint": true
     },
     "llm_analysis_private_chat_enabled": {
-        "description": "是否为私聊启用LLM注入分析。如果启用，私聊消息将始终进行LLM分析，不受待机模式影响。",
+        "description": "私聊中也启用LLM辅助分析",
         "type": "bool",
         "default": false,
-        "hint": "设置为 True 可让私聊消息也进行LLM注入分析。请注意，这将增加LLM的调用频率和token消耗。默认情况下私聊不进行LLM分析。",
-        "obvious_hint": true
+        "hint": "设置为 True 可让私聊消息也进行LLM注入分析。"
     }
 }
