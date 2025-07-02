@@ -12,11 +12,11 @@
             {"value": "sentry", "label": "哨兵模式 (极速)"},
             {"value": "aegis", "label": "神盾模式 (均衡)"},
             {"value": "scorch", "label": "焦土模式 (强硬)"},
-            {"value": "intercept", "label": "拦截模式 (实验性)"}
+            {"value": "intercept", "label": "拦截模式 (经典)"}
         ],
         "default": "sentry",
         "ui:widget": "select",
-        "hint": "选择插件的核心防御策略。直接编辑配置文件时请填入对应的英文值。\n\n- **哨兵模式 (sentry)**: 仅进行正则匹配，性能最高。\n- **神盾模式 (aegis)**: 引入LLM二次研判，对高风险请求注入安全指令，由主LLM裁决。\n- **焦土模式 (scorch)**: 将所有高风险请求直接改写为拦截通知，提供最强硬防护。\n- **拦截模式 (intercept)**: 尝试直接终止事件，兼容未来的AstrBot版本。\n\n**快速切换**: 管理员可发送指令 `/切换防护模式` 来循环切换以上模式。",
+        "hint": "选择插件的核心防御策略。此设置为下拉菜单，直接编辑配置文件时请填入对应的英文值。\n\n- **哨兵模式 (sentry)**: 仅进行正则匹配，对命中项采取'神盾'策略，性能最高。\n- **神盾模式 (aegis)**: 引入LLM二次研判，对高风险请求注入安全指令，由主LLM裁决。\n- **焦土模式 (scorch)**: 将所有高风险请求直接改写为拦截通知，提供最强硬防护。\n- **拦截模式 (intercept)**: 检测到风险时，直接终止事件。此模式兼容性好，是经典的拦截策略。\n\n**快速切换**: 管理员可发送指令 `/切换防护模式` 来循环切换以上模式。",
         "obvious_hint": true
     },
     "initial_whitelist": {
@@ -35,7 +35,7 @@
         ],
         "default": "standby",
         "ui:widget": "select",
-        "hint": "控制LLM辅助分析的运行模式。直接编辑配置文件时请填入对应的英文值。\n\n- **活跃 (active)**: 对每条消息都进行LLM辅助分析。\n- **待机 (standby)**: 仅在@机器人或检测到注入时进行LLM辅助分析。\n- **禁用 (disabled)**: 完全关闭LLM辅助分析。",
+        "hint": "控制LLM辅助分析的运行模式。此设置为下拉菜单，直接编辑配置文件时请填入对应的英文值。\n\n- **活跃 (active)**: 对每条消息都进行LLM辅助分析。\n- **待机 (standby)**: 仅在@机器人或检测到注入时进行LLM辅助分析。\n- **禁用 (disabled)**: 完全关闭LLM辅助分析。",
         "obvious_hint": true
     },
     "llm_analysis_private_chat_enabled": {
