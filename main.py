@@ -8,8 +8,7 @@ from astrbot.api.provider import ProviderRequest
 from astrbot.api.star import Context, Star, register
 from astrbot.api import logger, AstrBotConfig
 from astrbot.api.all import MessageType
-# 修正：LLMPreRequestEvent 是核心管道事件，需从 core 路径导入
-from astrbot.core.pipeline.context import LLMPreRequestEvent
+from astrbot.api.event import LLMPreRequestEvent
 
 # --- 全新设计的状态面板UI模板 ---
 STATUS_PANEL_TEMPLATE = """
