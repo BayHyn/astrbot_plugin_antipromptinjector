@@ -19,9 +19,14 @@
     "llm_analysis_mode": {
         "description": "LLM 注入分析模式。此模式控制是否使用大语言模型进行高级注入检测。",
         "type": "string",
-        "enum": ["active", "standby", "disabled"],
+        "enum": [
+            {"value": "active", "label": "活跃（每条消息都分析）"},
+            {"value": "standby", "label": "待机（仅@机器人或检测到注入时分析）"},
+            {"value": "disabled", "label": "禁用（完全关闭分析）"}
+        ],
         "default": "standby",
-        "hint": "选择 LLM 分析的运行模式：\n- 'active' (活跃): LLM分析功能对每条消息进行分析。如果5秒内没有LLM分析发生（即没有检测到注入），将自动切换到 'standby'。\n- 'standby' (待机): 默认模式。LLM分析功能处于待机状态，仅在用户消息明确指向机器人或检测到注入时触发LLM分析。检测到注入时，将切换到 'active'；未检测到注入时，将立即切换回 'standby'。\n- 'disabled' (禁用): 完全关闭 LLM 分析功能，不进行任何 LLM 调用。\n重要提示：启用 LLM 分析模式将消耗您绑定的 LLM 服务的 token。建议在需要时开启。",
+        "ui:widget": "select",
+        "hint": "选择 LLM 分析的运行模式。\n- 活跃: LLM分析功能对每条消息进行分析。如果5秒内没有LLM分析发生（即没有检测到注入），将自动切换到待机。\n- 待机: 仅在群聊消息明确指向机器人或检测到注入时触发LLM分析。检测到注入时，将切换到活跃；未检测到注入时，将立即切换回待机。\n- 禁用: 完全关闭 LLM 分析功能，不进行任何 LLM 调用。\n重要提示：启用 LLM 分析模式将消耗您绑定的 LLM 服务的 token。建议在需要时开启。",
         "obvious_hint": true
     },
     "llm_analysis_private_chat_enabled": {
