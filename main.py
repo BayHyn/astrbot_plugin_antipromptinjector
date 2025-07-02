@@ -17,18 +17,19 @@ CANVAS_STATUS_PANEL_TEMPLATE = """
 <head>
 <meta charset="UTF-8">
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Noto+Sans+SC:wght@400;700&display=swap');
+    /* 引入科技感字体和通用中文字体 */
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Noto+Sans+SC:wght@300;400;700&display=swap');
     body {
         margin: 0;
-        background: #1a1b26; 
+        background: #12141d; /* 使用纯色背景，避免不必要的边距 */
     }
 </style>
 </head>
 <body>
-    <canvas id="statusPanel" width="640" height="420"></canvas>
+    <!-- Canvas画布，所有内容将在这里绘制。优化尺寸以获得更佳清晰度 -->
+    <canvas id="statusPanel" width="650" height="430"></canvas>
 
     <script>
-        // 等待DOM加载完成
         document.addEventListener('DOMContentLoaded', function() {
             const canvas = document.getElementById('statusPanel');
             const ctx = canvas.getContext('2d');
@@ -36,9 +37,7 @@ CANVAS_STATUS_PANEL_TEMPLATE = """
             // 从Jinja2模板中获取数据 (安全地转为JSON字符串)
             const data = {{ data_json }};
 
-            // --- 绘图函数 ---
-
-            // 绘制圆角矩形（Canvas原生不支持，需要辅助函数）
+            // --- 辅助函数 ---
             function drawRoundRect(x, y, w, h, r) {
                 if (w < 2 * r) r = w / 2;
                 if (h < 2 * r) r = h / 2;
@@ -51,84 +50,101 @@ CANVAS_STATUS_PANEL_TEMPLATE = """
                 ctx.closePath();
                 return ctx;
             }
+            
+            function wrapText(text, x, y, maxWidth, lineHeight) {
+                const words = text.split('');
+                let line = '';
+                for(let n = 0; n < words.length; n++) {
+                    let testLine = line + words[n];
+                    let metrics = ctx.measureText(testLine);
+                    let testWidth = metrics.width;
+                    if (testWidth > maxWidth && n > 0) {
+                        ctx.fillText(line, x, y);
+                        line = words[n];
+                        y += lineHeight;
+                    } else {
+                        line = testLine;
+                    }
+                }
+                ctx.fillText(line, x, y);
+            }
 
-            // 绘制主背景
-            ctx.fillStyle = '#1a1b26';
+            // --- 绘制开始 ---
+            // 1. 绘制主背景
+            ctx.fillStyle = '#12141d';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 绘制标题
-            ctx.font = "700 30px 'Orbitron', sans-serif";
-            ctx.fillStyle = '#bb9af7'; // 优雅的紫色
-            ctx.shadowColor = '#bb9af7';
-            ctx.shadowBlur = 15;
-            ctx.fillText("INJECTION DEFENSE", 125, 60);
-            ctx.shadowBlur = 0; // 重置阴影
+            // 2. 绘制标题 (全中文)
+            ctx.font = "700 28px 'Orbitron', sans-serif";
+            ctx.fillStyle = '#c9d1d9';
+            ctx.shadowColor = 'rgba(187, 154, 247, 0.5)';
+            ctx.shadowBlur = 10;
+            ctx.fillText("注入防御系统", 110, 60);
+            ctx.shadowBlur = 0;
 
             // 绘制标题前的盾牌图标
-            ctx.font = "40px sans-serif";
-            ctx.fillText("🛡️", 60, 65);
+            ctx.font = "36px sans-serif";
+            ctx.fillText("🛡️", 50, 65);
 
-
-            // --- 绘制状态模块 ---
+            // 3. 绘制状态模块
             function drawStatusBlock(x, y, title, status, description, statusColor) {
                 // 绘制块背景
-                ctx.fillStyle = 'rgba(36, 40, 59, 0.8)';
-                ctx.strokeStyle = '#3b4261';
+                ctx.fillStyle = 'rgba(45, 51, 74, 0.5)';
+                ctx.strokeStyle = '#30363d';
                 ctx.lineWidth = 1;
-                drawRoundRect(x, y, 280, 150, 10).fill();
-                drawRoundRect(x, y, 280, 150, 10).stroke();
+                drawRoundRect(x, y, 285, 160, 8).fill();
+                drawRoundRect(x, y, 285, 160, 8).stroke();
 
                 // 绘制块标题
                 ctx.font = "700 18px 'Noto Sans SC', sans-serif";
-                ctx.fillStyle = '#7dcfff'; // 清澈的青色
-                ctx.fillText(title, x + 20, y + 40);
+                ctx.fillStyle = '#88a2d3';
+                ctx.fillText(title, x + 25, y + 40);
 
                 // 绘制分割线
                 ctx.beginPath();
-                ctx.moveTo(x + 20, y + 55);
-                ctx.lineTo(x + 260, y + 55);
-                ctx.strokeStyle = '#3b4261';
+                ctx.moveTo(x + 25, y + 58);
+                ctx.lineTo(x + 260, y + 58);
+                ctx.strokeStyle = '#30363d';
                 ctx.stroke();
 
                 // 绘制状态值
-                ctx.font = "700 24px 'Orbitron', sans-serif";
+                ctx.font = "700 26px 'Orbitron', sans-serif";
                 ctx.fillStyle = statusColor;
                 ctx.shadowColor = statusColor;
-                ctx.shadowBlur = 10;
-                ctx.fillText(status, x + 20, y + 95);
+                ctx.shadowBlur = 12;
+                ctx.fillText(status, x + 25, y + 95);
                 ctx.shadowBlur = 0;
 
                 // 绘制状态描述
-                ctx.font = "400 14px 'Noto Sans SC', sans-serif";
-                ctx.fillStyle = '#a9b1d6';
-                ctx.fillText(description, x + 20, y + 125, 240); // 限制宽度自动换行
+                ctx.font = "300 14px 'Noto Sans SC', sans-serif";
+                ctx.fillStyle = '#8b949e';
+                wrapText(description, x + 25, y + 125, 240, 20);
             }
             
             // 绘制群聊模块
-            drawStatusBlock(30, 120, "群聊扫描模块", data.current_mode, data.mode_description, data.mode_color);
+            drawStatusBlock(30, 110, "群聊扫描模块", data.current_mode, data.mode_description, data.mode_color);
             // 绘制私聊模块
-            drawStatusBlock(330, 120, "私聊扫描模块", data.private_chat_status, data.private_chat_description, data.private_color);
+            drawStatusBlock(335, 110, "私聊扫描模块", data.private_chat_status, data.private_chat_description, data.private_color);
 
-            // --- 绘制底部安全提示 ---
-            ctx.fillStyle = 'rgba(36, 40, 59, 0.8)';
-            drawRoundRect(30, 320, 580, 70, 10).fill();
+            // 4. 绘制底部安全提示
+            ctx.fillStyle = 'rgba(45, 51, 74, 0.5)';
+            drawRoundRect(30, 310, 590, 80, 8).fill();
             
             ctx.font = "700 16px 'Noto Sans SC', sans-serif";
-            ctx.fillStyle = '#e0af68'; // 黄色警告
-            ctx.fillText("安全提示", 45, 350);
+            ctx.fillStyle = '#d29922'; // 黄色警告
+            ctx.fillText("⚠️ 安全提示", 45, 340);
 
             ctx.font = "400 14px 'Noto Sans SC', sans-serif";
-            ctx.fillStyle = '#a9b1d6';
+            ctx.fillStyle = '#8b949e';
             const disclaimer = "本插件为辅助安全工具，无法完全替代主动安全策略。为了您的资产安全，请持续关注机器人状态。";
-            ctx.fillText(disclaimer, 45, 375, 540); // 限制宽度
-
+            wrapText(disclaimer, 45, 365, 560, 22);
         });
     </script>
 </body>
 </html>
 """
 
-@register("antipromptinjector", "LumineStory", "一个用于阻止提示词注入攻击的插件", "1.0.3")
+@register("antipromptinjector", "LumineStory", "一个用于阻止提示词注入攻击的插件", "1.0.3") 
 class AntiPromptInjector(Star):
     def __init__(self, context: Context, config: AstrBotConfig = None):
         super().__init__(context)
@@ -420,7 +436,6 @@ class AntiPromptInjector(Star):
         self.config.save_config()
         self.last_llm_analysis_time = None
         yield event.plain_result("✅ LLM注入分析功能已完全关闭。")
-
 
     @filter.command("LLM分析状态")
     async def cmd_check_llm_analysis_state(self, event: AstrMessageEvent):
