@@ -247,9 +247,12 @@ class AntiPromptInjector(Star):
         private_chat_llm_enabled = self.config.get("llm_analysis_private_chat_enabled", False)
 
         should_run_llm_analysis = False
-        if event.get_group_id() and current_llm_mode != "disabled":
+        is_group_message = event.get_group_id() is not None
+        is_private_message = event.get_message_type() == MessageType.FRIEND_MESSAGE
+
+        if is_group_message and current_llm_mode != "disabled":
             should_run_llm_analysis = True
-        elif event.get_message_type() == MessageType.FRIEND_MESSAGE and private_chat_llm_enabled:
+        elif is_private_message and private_chat_llm_enabled:
             should_run_llm_analysis = True
 
         if not should_run_llm_analysis:
@@ -281,19 +284,24 @@ class AntiPromptInjector(Star):
                 await event.send(event.plain_result("⚠️ 检测到可能的注入攻击 (LLM分析)，消息已被拦截。"))
                 event.stop_event()
                 
-                if event.get_group_id() and self.config.get("llm_analysis_mode") == "standby":
+                if is_group_message and self.config.get("llm_analysis_mode") == "standby":
                     self.config["llm_analysis_mode"] = "active"
                     self.last_llm_analysis_time = time.time()
                     logger.info("群聊LLM分析因检测到注入，自动切换到活跃模式。")
                     self.config.save_config()
                 return
             else:
-                if event.get_group_id() and self.config.get("llm_analysis_mode") == "active":
+                if is_group_message and self.config.get("llm_analysis_mode") == "active":
                     self.last_llm_analysis_time = time.time()
         
         except Exception as e:
-            logger.error(f"调用LLM进行注入分析时发生错误: {e}")
-            if event.get_group_id() and current_llm_mode != "disabled":
+            logger.error(f"调用LLM进行注入分析时发生错误: {e}. 为安全起见，已拦截该请求。")
+            # 无论发生何种错误，都发送拦截消息并终止事件，防止恶意提示词绕过
+            await event.send(event.plain_result("⚠️ 安全分析服务暂时出现问题，为保障安全，您的请求已被拦截。"))
+            event.stop_event()
+            
+            # 如果是群聊且非禁用模式，可以考虑切回待机以防持续失败
+            if is_group_message and current_llm_mode != "disabled":
                 self.config["llm_analysis_mode"] = "standby"
                 self.config.save_config()
                 self.last_llm_analysis_time = None
