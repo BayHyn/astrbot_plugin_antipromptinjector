@@ -1,19 +1,131 @@
-from astrbot.api.event import filter, AstrMessageEvent
-from astrbot.api.provider import ProviderRequest
-from astrbot.api.star import Context, Star, register
-from astrbot.api import logger
-from astrbot.api import AstrBotConfig
-from astrbot.api.all import MessageType
-
 import re
 import asyncio
 import time
+from typing import Dict, Any
+
+from astrbot.api.event import filter, AstrMessageEvent
+from astrbot.api.provider import ProviderRequest
+from astrbot.api.star import Context, Star, register
+from astrbot.api import logger, AstrBotConfig
+from astrbot.api.all import MessageType
+
+STATUS_PANEL_TEMPLATE = """
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Noto+Sans+SC:wght@300;400;700&display=swap');
+    body {
+        font-family: 'Noto Sans SC', sans-serif;
+        background: #1a1b26; /* 深邃的午夜蓝背景 */
+        color: #a9b1d6; /* 柔和的文本颜色 */
+        margin: 0;
+        padding: 24px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    .panel {
+        width: 600px;
+        background: rgba(36, 40, 59, 0.8); /* 半透明的深色背景 */
+        border: 1px solid #3b4261;
+        border-radius: 12px;
+        box-shadow: 0 0 25px rgba(125, 207, 255, 0.2);
+        backdrop-filter: blur(10px);
+        padding: 28px;
+    }
+    .header {
+        display: flex;
+        align-items: center;
+        border-bottom: 1px solid #3b4261;
+        padding-bottom: 15px;
+        margin-bottom: 20px;
+    }
+    .header-icon {
+        font-size: 32px;
+        margin-right: 15px;
+        animation: pulse 2s infinite;
+    }
+    .header-title h1 {
+        font-family: 'Orbitron', sans-serif;
+        font-size: 24px;
+        color: #bb9af7; /* 优雅的紫色标题 */
+        margin: 0;
+        letter-spacing: 2px;
+        text-shadow: 0 0 10px #bb9af7;
+    }
+    .status-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+    .status-block {
+        background: #24283b;
+        border-radius: 8px;
+        padding: 20px;
+        border: 1px solid #3b4261;
+    }
+    .status-block h2 {
+        font-size: 16px;
+        color: #7dcfff; /* 清澈的青色副标题 */
+        margin: 0 0 12px 0;
+        font-weight: 700;
+        border-bottom: 1px solid #3b4261;
+        padding-bottom: 8px;
+    }
+    .status-block .value {
+        font-size: 20px;
+        font-weight: 700;
+        margin-bottom: 8px;
+    }
+    .status-block .description {
+        font-size: 13px;
+        color: #a9b1d6;
+        line-height: 1.6;
+        font-weight: 300;
+    }
+    /* 根据不同状态改变颜色 */
+    .value.active { color: #ff757f; text-shadow: 0 0 8px #ff757f; } /* 活跃-红色警告 */
+    .value.standby { color: #e0af68; } /* 待机-黄色 */
+    .value.disabled { color: #565f89; } /* 禁用-灰色 */
+    .value.enabled { color: #9ece6a; } /* 启用-绿色 */
+
+    @keyframes pulse {
+        0% { transform: scale(1); opacity: 0.8; }
+        50% { transform: scale(1.1); opacity: 1; }
+        100% { transform: scale(1); opacity: 0.8; }
+    }
+</style>
+</head>
+<body>
+    <div class="panel">
+        <div class="header">
+            <div class="header-icon">🛡️</div>
+            <div class="header-title"><h1>INJECTION DEFENSE</h1></div>
+        </div>
+        <div class="status-grid">
+            <div class="status-block">
+                <h2>LLM ANALYSIS (GROUP)</h2>
+                <p class="value {{ mode_class }}">{{ current_mode }}</p>
+                <p class="description">{{ mode_description }}</p>
+            </div>
+            <div class="status-block">
+                <h2>LLM ANALYSIS (PRIVATE)</h2>
+                <p class="value {{ private_class }}">{{ private_chat_status }}</p>
+                <p class="description">{{ private_chat_description }}</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+"""
 
 @register("antipromptinjector", "LumineStory", "一个用于阻止提示词注入攻击的插件", "1.0.2")
 class AntiPromptInjector(Star):
-    def __init__(self, context: Context, config: AstrBotConfig):
+    def __init__(self, context: Context, config: AstrBotConfig = None):
         super().__init__(context)
-        self.config = config 
+        self.config = config if config else {}
         self.plugin_enabled = self.config.get("enabled", True)
         if "whitelist" not in self.config:
             self.config["whitelist"] = self.config.get("initial_whitelist", [])
@@ -82,7 +194,6 @@ class AntiPromptInjector(Star):
         ]
 
     async def _monitor_llm_activity(self):
-        # 监控LLM分析活跃状态，不活跃时自动切换到待机
         while True:
             await asyncio.sleep(1)
             current_llm_mode = self.config.get("llm_analysis_mode", "standby")
@@ -105,7 +216,6 @@ class AntiPromptInjector(Star):
         current_whitelist = self.config.get("whitelist", []) 
         if event.get_sender_id() in current_whitelist:
             return
-        # 正则表达式匹配
         for p in self.patterns:
             if p.search(message_content):
                 logger.warning(f"⚠️ 正则表达式拦截注入消息: {message_content}")
@@ -113,7 +223,6 @@ class AntiPromptInjector(Star):
                 yield event.plain_result("⚠️ 检测到可能的注入攻击 (模式匹配)，消息已被拦截。")
                 self.config.save_config() 
                 return
-        # LLM 注入分析
         current_llm_mode = self.config.get("llm_analysis_mode", "standby")
         llm_provider_instance = self.context.get_using_provider()
         private_chat_llm_enabled = self.config.get("llm_analysis_private_chat_enabled", False)
@@ -195,9 +304,9 @@ class AntiPromptInjector(Star):
                 self.last_llm_analysis_time = None 
                 yield event.plain_result("⚠️ LLM注入分析功能出现错误，已自动进入待机状态。")
                 return
+
     @filter.on_llm_request()
     async def block_llm_modifications(self, event: AstrMessageEvent, req: ProviderRequest):
-        # 防止非系统内置机制恶意修改LLM的系统提示词
         if not self.plugin_enabled:
             return
         if req.system_prompt and not event.is_admin():
@@ -213,6 +322,7 @@ class AntiPromptInjector(Star):
         for msg in messages:
             if getattr(msg, "role", None) == "user" and getattr(msg, "content", ""):
                 pass
+
     @filter.command("添加防注入白名单ID")
     async def cmd_add_wl(self, event: AstrMessageEvent, target_id: str):
         if not event.is_admin(): 
@@ -226,6 +336,7 @@ class AntiPromptInjector(Star):
             yield event.plain_result(f"✅ {target_id} 已添加至白名单。")
         else:
             yield event.plain_result(f"⚠️ {target_id} 已在白名单内。")
+
     @filter.command("移除防注入白名单ID")
     async def cmd_remove_wl(self, event: AstrMessageEvent, target_id: str):
         if not event.is_admin(): 
@@ -239,6 +350,7 @@ class AntiPromptInjector(Star):
             yield event.plain_result(f"✅ {target_id} 已从白名单移除。")
         else:
             yield event.plain_result(f"⚠️ {target_id} 不在白名单中。")
+
     @filter.command("查看防注入白名单")
     async def cmd_view_wl(self, event: AstrMessageEvent):
         current_whitelist = self.config.get("whitelist", [])
@@ -247,6 +359,7 @@ class AntiPromptInjector(Star):
             return
         ids = "\n".join(current_whitelist)
         yield event.plain_result(f"当前白名单用户：\n{ids}")
+
     @filter.command("查看管理员状态")
     async def cmd_check_admin(self, event: AstrMessageEvent):
         sender_id = event.get_sender_id()
@@ -279,6 +392,7 @@ class AntiPromptInjector(Star):
                 yield event.plain_result("抱歉，处理您的请求时LLM服务出现问题。")
         else:
             yield event.plain_result("抱歉，当前没有可用的LLM服务来处理您的请求。")
+
     @filter.command("开启LLM注入分析")
     async def cmd_enable_llm_analysis(self, event: AstrMessageEvent):
         if not event.is_admin():
@@ -288,6 +402,7 @@ class AntiPromptInjector(Star):
         self.config.save_config()
         self.last_llm_analysis_time = time.time()
         yield event.plain_result("✅ LLM注入分析功能已开启 (活跃模式)。")
+
     @filter.command("关闭LLM注入分析")
     async def cmd_disable_llm_analysis(self, event: AstrMessageEvent):
         if not event.is_admin():
@@ -297,39 +412,58 @@ class AntiPromptInjector(Star):
         self.config.save_config()
         self.last_llm_analysis_time = None
         yield event.plain_result("✅ LLM注入分析功能已完全关闭。")
+
     @filter.command("LLM分析状态")
     async def cmd_check_llm_analysis_state(self, event: AstrMessageEvent):
+        # --- 核心修改部分 ---
         current_mode = self.config.get("llm_analysis_mode", "standby")
-        status_msg = f"当前LLM注入分析状态：{current_mode}。"
-        if current_mode == "active":
-            status_msg += " (LLM将对每条消息进行分析。如果5秒内没有LLM分析发生（即没有检测到注入），将自动切换到待机模式。)"
-        elif current_mode == "standby":
-            status_msg += " (LLM处于待机模式，仅在群聊消息明确指向机器人或检测到注入时触发分析。检测到注入时，将切换到活跃模式；未检测到注入时，将立即切换回待机模式。)"
-        elif current_mode == "disabled":
-            status_msg += " (LLM分析已完全禁用，需要管理员手动开启)"
         private_chat_llm_enabled = self.config.get("llm_analysis_private_chat_enabled", False)
-        status_msg += f"\n私聊LLM注入分析：{'已启用' if private_chat_llm_enabled else '已禁用'}。"
+
+        # 准备传递给模板的数据
+        data: Dict[str, Any] = {
+            "current_mode": current_mode.upper(),
+            "mode_class": current_mode,
+            "private_chat_status": "已启用" if private_chat_llm_enabled else "已禁用",
+            "private_class": "enabled" if private_chat_llm_enabled else "disabled"
+        }
+
+        # 根据模式设置描述文本
+        if current_mode == "active":
+            data["mode_description"] = "LLM将对每条群聊消息进行分析。若5秒内无分析活动，将自动切换到待机模式。"
+        elif current_mode == "standby":
+            data["mode_description"] = "LLM待机中，仅在群聊消息明确指向机器人或检测到注入时触发分析。"
+        else: # disabled
+            data["mode_description"] = "LLM分析已完全禁用，所有群聊消息将跳过AI安全扫描。"
+        
         if private_chat_llm_enabled:
-            status_msg += " (私聊消息将始终进行LLM分析，不受群聊模式影响。)"
+            data["private_chat_description"] = "所有私聊消息都将进行LLM安全分析，不受群聊模式影响。"
         else:
-            status_msg += " (私聊消息将跳过LLM分析，以节省资源。)"
-        yield event.plain_result(status_msg)
+            data["private_chat_description"] = "所有私聊消息将跳过LLM分析，以节约资源。"
+
+        try:
+            # 调用 html_render 生成图片
+            image_url = await self.html_render(STATUS_PANEL_TEMPLATE, data)
+            yield event.image_result(image_url)
+        except Exception as e:
+            logger.error(f"渲染LLM分析状态面板失败: {e}")
+            yield event.plain_result("❌ 渲染状态面板时出错，请检查后台日志。")
+
     @filter.command("反注入帮助")
     async def cmd_help(self, event: AstrMessageEvent):
         msg = (
             "🛡️ 反注入插件命令：\n"
-            "/添加防注入白名单ID <ID> (需要管理员权限)\n"
-            "/移除防注入白名单ID <ID> (需要管理员权限)\n"
+            "/添加防注入白名单ID <ID> (管理员)\n"
+            "/移除防注入白名单ID <ID> (管理员)\n"
             "/查看防注入白名单\n"
             "/查看管理员状态\n"
-            "/开启LLM注入分析 (需要管理员权限)\n"
-            "/关闭LLM注入分析 (需要管理员权限)\n"
+            "/开启LLM注入分析 (管理员)\n"
+            "/关闭LLM注入分析 (管理员)\n"
             "/LLM分析状态\n"
             "/反注入帮助\n"
         )
         yield event.plain_result(msg)
+
     async def terminate(self):
-        # 插件终止时清理资源
         if self.monitor_task:
             self.monitor_task.cancel()
             try:
