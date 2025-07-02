@@ -2,6 +2,7 @@ import re
 import asyncio
 import time
 from typing import Dict, Any
+import json # 引入json库以便将数据安全地传递给JS
 
 from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.provider import ProviderRequest
@@ -9,119 +10,125 @@ from astrbot.api.star import Context, Star, register
 from astrbot.api import logger, AstrBotConfig
 from astrbot.api.all import MessageType
 
-STATUS_PANEL_TEMPLATE = """
+# --- 全新科技感状态面板: 基于Canvas绘制 ---
+CANVAS_STATUS_PANEL_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Noto+Sans+SC:wght@300;400;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Noto+Sans+SC:wght@400;700&display=swap');
     body {
-        font-family: 'Noto Sans SC', sans-serif;
-        background: #1a1b26; /* 深邃的午夜蓝背景 */
-        color: #a9b1d6; /* 柔和的文本颜色 */
         margin: 0;
-        padding: 24px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
-    .panel {
-        width: 600px;
-        background: rgba(36, 40, 59, 0.8); /* 半透明的深色背景 */
-        border: 1px solid #3b4261;
-        border-radius: 12px;
-        box-shadow: 0 0 25px rgba(125, 207, 255, 0.2);
-        backdrop-filter: blur(10px);
-        padding: 28px;
-    }
-    .header {
-        display: flex;
-        align-items: center;
-        border-bottom: 1px solid #3b4261;
-        padding-bottom: 15px;
-        margin-bottom: 20px;
-    }
-    .header-icon {
-        font-size: 32px;
-        margin-right: 15px;
-        animation: pulse 2s infinite;
-    }
-    .header-title h1 {
-        font-family: 'Orbitron', sans-serif;
-        font-size: 24px;
-        color: #bb9af7; /* 优雅的紫色标题 */
-        margin: 0;
-        letter-spacing: 2px;
-        text-shadow: 0 0 10px #bb9af7;
-    }
-    .status-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 20px;
-    }
-    .status-block {
-        background: #24283b;
-        border-radius: 8px;
-        padding: 20px;
-        border: 1px solid #3b4261;
-    }
-    .status-block h2 {
-        font-size: 16px;
-        color: #7dcfff; /* 清澈的青色副标题 */
-        margin: 0 0 12px 0;
-        font-weight: 700;
-        border-bottom: 1px solid #3b4261;
-        padding-bottom: 8px;
-    }
-    .status-block .value {
-        font-size: 20px;
-        font-weight: 700;
-        margin-bottom: 8px;
-    }
-    .status-block .description {
-        font-size: 13px;
-        color: #a9b1d6;
-        line-height: 1.6;
-        font-weight: 300;
-    }
-    /* 根据不同状态改变颜色 */
-    .value.active { color: #ff757f; text-shadow: 0 0 8px #ff757f; } /* 活跃-红色警告 */
-    .value.standby { color: #e0af68; } /* 待机-黄色 */
-    .value.disabled { color: #565f89; } /* 禁用-灰色 */
-    .value.enabled { color: #9ece6a; } /* 启用-绿色 */
-
-    @keyframes pulse {
-        0% { transform: scale(1); opacity: 0.8; }
-        50% { transform: scale(1.1); opacity: 1; }
-        100% { transform: scale(1); opacity: 0.8; }
+        background: #1a1b26; 
     }
 </style>
 </head>
 <body>
-    <div class="panel">
-        <div class="header">
-            <div class="header-icon">🛡️</div>
-            <div class="header-title"><h1>INJECTION DEFENSE</h1></div>
-        </div>
-        <div class="status-grid">
-            <div class="status-block">
-                <h2>LLM ANALYSIS (GROUP)</h2>
-                <p class="value {{ mode_class }}">{{ current_mode }}</p>
-                <p class="description">{{ mode_description }}</p>
-            </div>
-            <div class="status-block">
-                <h2>LLM ANALYSIS (PRIVATE)</h2>
-                <p class="value {{ private_class }}">{{ private_chat_status }}</p>
-                <p class="description">{{ private_chat_description }}</p>
-            </div>
-        </div>
-    </div>
+    <canvas id="statusPanel" width="640" height="420"></canvas>
+
+    <script>
+        // 等待DOM加载完成
+        document.addEventListener('DOMContentLoaded', function() {
+            const canvas = document.getElementById('statusPanel');
+            const ctx = canvas.getContext('2d');
+
+            // 从Jinja2模板中获取数据 (安全地转为JSON字符串)
+            const data = {{ data_json }};
+
+            // --- 绘图函数 ---
+
+            // 绘制圆角矩形（Canvas原生不支持，需要辅助函数）
+            function drawRoundRect(x, y, w, h, r) {
+                if (w < 2 * r) r = w / 2;
+                if (h < 2 * r) r = h / 2;
+                ctx.beginPath();
+                ctx.moveTo(x + r, y);
+                ctx.arcTo(x + w, y, x + w, y + h, r);
+                ctx.arcTo(x + w, y + h, x, y + h, r);
+                ctx.arcTo(x, y + h, x, y, r);
+                ctx.arcTo(x, y, x + w, y, r);
+                ctx.closePath();
+                return ctx;
+            }
+
+            // 绘制主背景
+            ctx.fillStyle = '#1a1b26';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 绘制标题
+            ctx.font = "700 30px 'Orbitron', sans-serif";
+            ctx.fillStyle = '#bb9af7'; // 优雅的紫色
+            ctx.shadowColor = '#bb9af7';
+            ctx.shadowBlur = 15;
+            ctx.fillText("INJECTION DEFENSE", 125, 60);
+            ctx.shadowBlur = 0; // 重置阴影
+
+            // 绘制标题前的盾牌图标
+            ctx.font = "40px sans-serif";
+            ctx.fillText("🛡️", 60, 65);
+
+
+            // --- 绘制状态模块 ---
+            function drawStatusBlock(x, y, title, status, description, statusColor) {
+                // 绘制块背景
+                ctx.fillStyle = 'rgba(36, 40, 59, 0.8)';
+                ctx.strokeStyle = '#3b4261';
+                ctx.lineWidth = 1;
+                drawRoundRect(x, y, 280, 150, 10).fill();
+                drawRoundRect(x, y, 280, 150, 10).stroke();
+
+                // 绘制块标题
+                ctx.font = "700 18px 'Noto Sans SC', sans-serif";
+                ctx.fillStyle = '#7dcfff'; // 清澈的青色
+                ctx.fillText(title, x + 20, y + 40);
+
+                // 绘制分割线
+                ctx.beginPath();
+                ctx.moveTo(x + 20, y + 55);
+                ctx.lineTo(x + 260, y + 55);
+                ctx.strokeStyle = '#3b4261';
+                ctx.stroke();
+
+                // 绘制状态值
+                ctx.font = "700 24px 'Orbitron', sans-serif";
+                ctx.fillStyle = statusColor;
+                ctx.shadowColor = statusColor;
+                ctx.shadowBlur = 10;
+                ctx.fillText(status, x + 20, y + 95);
+                ctx.shadowBlur = 0;
+
+                // 绘制状态描述
+                ctx.font = "400 14px 'Noto Sans SC', sans-serif";
+                ctx.fillStyle = '#a9b1d6';
+                ctx.fillText(description, x + 20, y + 125, 240); // 限制宽度自动换行
+            }
+            
+            // 绘制群聊模块
+            drawStatusBlock(30, 120, "群聊扫描模块", data.current_mode, data.mode_description, data.mode_color);
+            // 绘制私聊模块
+            drawStatusBlock(330, 120, "私聊扫描模块", data.private_chat_status, data.private_chat_description, data.private_color);
+
+            // --- 绘制底部安全提示 ---
+            ctx.fillStyle = 'rgba(36, 40, 59, 0.8)';
+            drawRoundRect(30, 320, 580, 70, 10).fill();
+            
+            ctx.font = "700 16px 'Noto Sans SC', sans-serif";
+            ctx.fillStyle = '#e0af68'; // 黄色警告
+            ctx.fillText("安全提示", 45, 350);
+
+            ctx.font = "400 14px 'Noto Sans SC', sans-serif";
+            ctx.fillStyle = '#a9b1d6';
+            const disclaimer = "本插件为辅助安全工具，无法完全替代主动安全策略。为了您的资产安全，请持续关注机器人状态。";
+            ctx.fillText(disclaimer, 45, 375, 540); // 限制宽度
+
+        });
+    </script>
 </body>
 </html>
 """
 
-@register("antipromptinjector", "LumineStory", "一个用于阻止提示词注入攻击的插件", "1.0.2")
+@register("antipromptinjector", "LumineStory", "一个用于阻止提示词注入攻击的插件", "1.0.3")
 class AntiPromptInjector(Star):
     def __init__(self, context: Context, config: AstrBotConfig = None):
         super().__init__(context)
@@ -193,6 +200,7 @@ class AntiPromptInjector(Star):
             re.compile(r"我会给你新的指令.*", re.IGNORECASE),
         ]
 
+    # ... (插件的其他方法保持不变) ...
     async def _monitor_llm_activity(self):
         while True:
             await asyncio.sleep(1)
@@ -413,6 +421,7 @@ class AntiPromptInjector(Star):
         self.last_llm_analysis_time = None
         yield event.plain_result("✅ LLM注入分析功能已完全关闭。")
 
+
     @filter.command("LLM分析状态")
     async def cmd_check_llm_analysis_state(self, event: AstrMessageEvent):
         # --- 核心修改部分 ---
@@ -420,33 +429,37 @@ class AntiPromptInjector(Star):
         private_chat_llm_enabled = self.config.get("llm_analysis_private_chat_enabled", False)
 
         # 准备传递给模板的数据
-        data: Dict[str, Any] = {
-            "current_mode": current_mode.upper(),
-            "mode_class": current_mode,
-            "private_chat_status": "已启用" if private_chat_llm_enabled else "已禁用",
-            "private_class": "enabled" if private_chat_llm_enabled else "disabled"
+        status_map: Dict[str, Dict[str, str]] = {
+            "active": {"text": "活跃", "color": "#ff757f", "desc": "将对每条群聊消息进行分析。若5秒内无分析活动，将自动切换到待机模式。"},
+            "standby": {"text": "待机", "color": "#e0af68", "desc": "仅在群聊消息明确指向机器人或检测到注入时触发分析。"},
+            "disabled": {"text": "禁用", "color": "#565f89", "desc": "所有群聊消息将跳过AI安全扫描。"}
         }
-
-        # 根据模式设置描述文本
-        if current_mode == "active":
-            data["mode_description"] = "LLM将对每条群聊消息进行分析。若5秒内无分析活动，将自动切换到待机模式。"
-        elif current_mode == "standby":
-            data["mode_description"] = "LLM待机中，仅在群聊消息明确指向机器人或检测到注入时触发分析。"
-        else: # disabled
-            data["mode_description"] = "LLM分析已完全禁用，所有群聊消息将跳过AI安全扫描。"
+        private_status_map: Dict[bool, Dict[str, str]] = {
+            True: {"text": "已启用", "color": "#9ece6a", "desc": "所有私聊消息都将进行LLM安全分析，不受群聊模式影响。"},
+            False: {"text": "已禁用", "color": "#565f89", "desc": "所有私聊消息将跳过LLM分析，以节约资源。"}
+        }
         
-        if private_chat_llm_enabled:
-            data["private_chat_description"] = "所有私聊消息都将进行LLM安全分析，不受群聊模式影响。"
-        else:
-            data["private_chat_description"] = "所有私聊消息将跳过LLM分析，以节约资源。"
+        mode_data = status_map.get(current_mode, status_map["standby"])
+        private_data = private_status_map.get(private_chat_llm_enabled)
+
+        # 将数据打包成一个JSON字符串，以便在<script>中安全使用
+        data_for_js = json.dumps({
+            "current_mode": mode_data["text"],
+            "mode_description": mode_data["desc"],
+            "mode_color": mode_data["color"],
+            "private_chat_status": private_data["text"],
+            "private_chat_description": private_data["desc"],
+            "private_color": private_data["color"]
+        })
 
         try:
             # 调用 html_render 生成图片
-            image_url = await self.html_render(STATUS_PANEL_TEMPLATE, data)
+            image_url = await self.html_render(CANVAS_STATUS_PANEL_TEMPLATE, {"data_json": data_for_js})
             yield event.image_result(image_url)
         except Exception as e:
             logger.error(f"渲染LLM分析状态面板失败: {e}")
             yield event.plain_result("❌ 渲染状态面板时出错，请检查后台日志。")
+
 
     @filter.command("反注入帮助")
     async def cmd_help(self, event: AstrMessageEvent):
