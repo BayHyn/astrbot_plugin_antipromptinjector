@@ -3,11 +3,11 @@ import asyncio
 import time
 from typing import Dict, Any
 
-from astrbot.api.event import filter, AstrMessageEvent, LLMPreRequestEvent
+from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.provider import ProviderRequest
 from astrbot.api.star import Context, Star, register
 from astrbot.api import logger, AstrBotConfig
-from astrbot.api.all import MessageType
+from astrbot.api.all import MessageType, LLMPreRequestEvent
 
 # --- 全新设计的状态面板UI模板 ---
 STATUS_PANEL_TEMPLATE = """
