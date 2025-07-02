@@ -135,7 +135,7 @@ class AntiPromptInjector(Star):
         if "llm_analysis_private_chat_enabled" not in self.config:
             self.config["llm_analysis_private_chat_enabled"] = False
             self.config.save_config()
-        self.last_llm_analysis_time = None 
+        self.last_llm_analysis_time = None
         self.monitor_task = asyncio.create_task(self._monitor_llm_activity())
         # 注入攻击正则表达式模式列表
         self.patterns = [
