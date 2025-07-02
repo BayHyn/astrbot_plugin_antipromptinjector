@@ -488,4 +488,4 @@ class AntiPromptInjector(Star):
                 await self.monitor_task
             except asyncio.CancelledError:
                 logger.info("LLM不活跃监控任务已取消。")
-        logger.info("AntiPromptInjector 插件已终止。")
+        logger.info("AntiPromptInjector 插件已终止
