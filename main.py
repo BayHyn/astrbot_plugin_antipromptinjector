@@ -8,7 +8,7 @@ from astrbot.api.provider import ProviderRequest
 from astrbot.api.star import Context, Star, register
 from astrbot.api import logger, AstrBotConfig
 from astrbot.api.all import MessageType
-from astrbot.api.event import LLMPreRequestEvent
+# from astrbot.api.event import LLMPreRequestEvent
 
 # --- 全新设计的状态面板UI模板 ---
 STATUS_PANEL_TEMPLATE = """
@@ -317,12 +317,12 @@ class AntiPromptInjector(Star):
             return
 
     @filter.on_llm_request()
-    async def block_llm_modifications(self, event: LLMPreRequestEvent, req: ProviderRequest):
+    async def block_llm_modifications(self, event, req: ProviderRequest):
         if not self.plugin_enabled:
             return
         
         # 使用 event.message_event.is_admin() 进行权限判断
-        if req.system_prompt and not event.message_event.is_admin():
+        if hasattr(event, "message_event") and req.system_prompt and not event.message_event.is_admin():
             for p in self.system_prompt_injection_patterns:
                 if p.search(req.system_prompt):
                     logger.warning(f"检测到非管理员尝试恶意修改LLM系统提示词，已清除。用户ID: {event.message_event.get_sender_id()}, 原始内容: {req.system_prompt[:50]}...")
