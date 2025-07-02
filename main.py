@@ -19,11 +19,10 @@ CANVAS_STATUS_PANEL_TEMPLATE = """
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@500;700&family=Noto+Sans+SC:wght@500;700&display=swap');
     body {
         margin: 0;
-        background: linear-gradient(135deg, #e9f2fb 0%, #f6f8fa 100%);
+        background: linear-gradient(135deg, #e3e9f7 0%, #f8fafc 100%);
         display: flex;
         justify-content: center;
         align-items: center;
-        padding: 0;
         min-height: 100vh;
     }
 </style>
@@ -36,6 +35,7 @@ CANVAS_STATUS_PANEL_TEMPLATE = """
             const ctx = canvas.getContext('2d');
             const data = {{ data_json }};
 
+            // 绘制圆角矩形
             function drawRoundRect(x, y, w, h, r) {
                 ctx.beginPath();
                 ctx.moveTo(x + r, y);
@@ -46,6 +46,7 @@ CANVAS_STATUS_PANEL_TEMPLATE = """
                 ctx.closePath();
             }
 
+            // 自动换行文本
             function wrapText(text, x, y, maxWidth, lineHeight, align = 'left') {
                 ctx.save();
                 ctx.textAlign = align;
@@ -67,73 +68,103 @@ CANVAS_STATUS_PANEL_TEMPLATE = """
                 ctx.restore();
             }
 
+            // 背景渐变
             let bgGradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-            bgGradient.addColorStop(0, "#e9f2fb");
-            bgGradient.addColorStop(1, "#f6f8fa");
+            bgGradient.addColorStop(0, "#e3e9f7");
+            bgGradient.addColorStop(1, "#f8fafc");
             ctx.fillStyle = bgGradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            ctx.font = "700 38px 'Noto Sans SC', 'Inter', sans-serif";
+            // 顶部标题
+            ctx.save();
+            ctx.font = "700 40px 'Noto Sans SC', 'Inter', sans-serif";
             ctx.fillStyle = "#1a2233";
             ctx.textAlign = "center";
             ctx.shadowColor = "#b3d0f7";
-            ctx.shadowBlur = 8;
-            ctx.fillText("🛡️ 注入防御系统状态", canvas.width / 2, 68);
-            ctx.shadowBlur = 0;
+            ctx.shadowBlur = 10;
+            ctx.fillText("🛡️ 注入防御系统状态", canvas.width / 2, 64);
+            ctx.restore();
 
+            // 美化卡片
             function drawStatusCard(x, y, title, status, desc, color, icon) {
+                // 卡片阴影
                 ctx.save();
                 ctx.shadowColor = "#b3d0f7";
-                ctx.shadowBlur = 16;
-                drawRoundRect(x, y, 340, 200, 18);
+                ctx.shadowBlur = 24;
+                drawRoundRect(x, y, 320, 200, 22);
                 ctx.fillStyle = "#fff";
                 ctx.fill();
                 ctx.restore();
 
+                // 卡片边框
                 ctx.save();
-                ctx.lineWidth = 2;
+                ctx.lineWidth = 2.5;
                 ctx.strokeStyle = "#e3e8ef";
-                drawRoundRect(x, y, 340, 200, 18);
+                drawRoundRect(x, y, 320, 200, 22);
                 ctx.stroke();
                 ctx.restore();
 
+                // 彩色圆圈背景
                 ctx.save();
                 ctx.beginPath();
-                ctx.arc(x + 48, y + 54, 26, 0, 2 * Math.PI);
-                ctx.fillStyle = color + "22";
+                ctx.arc(x + 48, y + 54, 28, 0, 2 * Math.PI);
+                ctx.fillStyle = color + "33";
                 ctx.fill();
                 ctx.restore();
 
-                ctx.font = "700 28px 'Noto Sans SC', 'Inter', sans-serif";
+                // 图标
+                ctx.save();
+                ctx.font = "700 30px 'Noto Sans SC', 'Inter', sans-serif";
                 ctx.fillStyle = color;
                 ctx.textAlign = "center";
                 ctx.fillText(icon, x + 48, y + 62);
+                ctx.restore();
 
+                // 标题
+                ctx.save();
                 ctx.font = "700 22px 'Noto Sans SC', 'Inter', sans-serif";
                 ctx.fillStyle = "#1a2233";
                 ctx.textAlign = "left";
                 ctx.fillText(title, x + 90, y + 60);
+                ctx.restore();
 
-                ctx.font = "700 44px 'Inter', 'Noto Sans SC', sans-serif";
+                // 状态
+                ctx.save();
+                ctx.font = "700 38px 'Inter', 'Noto Sans SC', sans-serif";
                 ctx.fillStyle = color;
                 ctx.textAlign = "left";
                 ctx.fillText(status, x + 48, y + 120);
+                ctx.restore();
 
+                // 描述
+                ctx.save();
                 ctx.font = "500 16px 'Noto Sans SC', 'Inter', sans-serif";
                 ctx.fillStyle = "#5b6b7a";
                 ctx.textAlign = "left";
-                wrapText(desc, x + 48, y + 160, 260, 24);
+                wrapText(desc, x + 48, y + 160, 220, 22);
+                ctx.restore();
             }
 
-            drawStatusCard(40, 120, "群聊扫描模块", data.current_mode, data.mode_description, data.mode_color, "👥");
+            // 卡片布局更紧凑，居中
+            drawStatusCard(60, 120, "群聊扫描模块", data.current_mode, data.mode_description, data.mode_color, "👥");
             drawStatusCard(380, 120, "私聊扫描模块", data.private_chat_status, data.private_chat_description, data.private_color, "💬");
 
+            // 底部提示
+            ctx.save();
             ctx.font = "500 15px 'Noto Sans SC', 'Inter', sans-serif";
             ctx.fillStyle = "#8a99b3";
             ctx.textAlign = "center";
             const disclaimer = "安全提示：本插件为辅助安全工具，无法完全替代主动安全策略。请持续关注机器人状态。";
             wrapText(disclaimer, canvas.width / 2, 370, 660, 24, 'center');
+            ctx.restore();
+
+            // 右下角水印
+            ctx.save();
+            ctx.font = "500 13px 'Inter', 'Noto Sans SC', sans-serif";
+            ctx.fillStyle = "#c2cbe5";
+            ctx.textAlign = "right";
+            ctx.fillText("AstrBot AntiPromptInjector v2", canvas.width - 18, canvas.height - 18);
+            ctx.restore();
         });
     </script>
 </body>
