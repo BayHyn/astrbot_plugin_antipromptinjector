@@ -207,12 +207,13 @@ class AntiPromptInjector(Star):
     @filter.event_message_type(filter.EventMessageType.ALL)
     async def detect_prompt_injection(self, event: AstrMessageEvent):
         message_content = event.get_message_str().strip()
+        # 指令消息直接跳过所有检测和LLM分析
         if message_content.startswith('/'):
-            logger.debug(f"检测到命令消息: {message_content}. 跳过注入检测。")
+            logger.debug(f"检测到命令消息: {message_content}. 跳过注入检测和LLM分析。")
             return
         if not self.plugin_enabled:
             return
-        current_whitelist = self.config.get("whitelist", []) 
+        current_whitelist = self.config.get("whitelist", [])
         if event.get_sender_id() in current_whitelist:
             return
         for p in self.patterns:
@@ -220,15 +221,16 @@ class AntiPromptInjector(Star):
                 logger.warning(f"⚠️ 正则表达式拦截注入消息: {message_content}")
                 event.stop_event()
                 yield event.plain_result("⚠️ 检测到可能的注入攻击 (模式匹配)，消息已被拦截。")
-                self.config.save_config() 
+                self.config.save_config()
                 return
+        # 指令消息已在前面 return，这里无需再判断
         current_llm_mode = self.config.get("llm_analysis_mode", "standby")
         llm_provider_instance = self.context.get_using_provider()
         private_chat_llm_enabled = self.config.get("llm_analysis_private_chat_enabled", False)
         if not llm_provider_instance:
             if current_llm_mode != "disabled":
                 logger.warning("LLM提供者不可用，LLM注入分析无法执行。")
-                if current_llm_mode != "standby": 
+                if current_llm_mode != "standby":
                     self.config["llm_analysis_mode"] = "standby"
                     self.config.save_config()
                     yield event.plain_result("⚠️ LLM注入分析功能因LLM提供者不可用，已自动进入待机状态。")
@@ -239,7 +241,7 @@ class AntiPromptInjector(Star):
                 should_run_llm_analysis = True
                 logger.debug("群聊LLM分析处于活跃模式，将进行分析。")
             elif current_llm_mode == "standby":
-                if event.is_at_or_wake_command: 
+                if event.is_at_or_wake_command:
                     should_run_llm_analysis = True
                     logger.info(f"群聊LLM分析从待机状态被用户消息触发 (明确指向机器人)。消息: {message_content[:30]}...")
                 else:
@@ -254,7 +256,7 @@ class AntiPromptInjector(Star):
                 return
         else:
             logger.debug(f"未知消息类型，跳过LLM注入分析。Event Type: {event.get_message_type()}")
-            return 
+            return
         if should_run_llm_analysis:
             try:
                 llm_prompt = (
@@ -265,7 +267,7 @@ class AntiPromptInjector(Star):
                 )
                 llm_response = await llm_provider_instance.text_chat(
                     prompt=llm_prompt,
-                    session_id=event.get_session_id(), 
+                    session_id=event.get_session_id(),
                     contexts=[],
                     image_urls=[],
                     func_tool=None,
@@ -293,14 +295,14 @@ class AntiPromptInjector(Star):
                         logger.debug("私聊LLM未检测到注入，保持活跃模式。")
                         self.last_llm_analysis_time = time.time()
                     else:
-                        self.last_llm_analysis_time = None 
+                        self.last_llm_analysis_time = None
                     self.config.save_config()
                     return
             except Exception as e:
                 logger.error(f"调用LLM进行注入分析时发生错误: {e}")
                 self.config["llm_analysis_mode"] = "standby"
                 self.config.save_config()
-                self.last_llm_analysis_time = None 
+                self.last_llm_analysis_time = None
                 yield event.plain_result("⚠️ LLM注入分析功能出现错误，已自动进入待机状态。")
                 return
 
