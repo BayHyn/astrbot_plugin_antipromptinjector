@@ -21,7 +21,7 @@ CANVAS_STATUS_PANEL_TEMPLATE = """
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap');
     body {
         margin: 0;
-        background: #f7f8fa; /* 干净的浅灰色背景 */
+        background: #f6f8fa; /* 干净的浅灰色背景 */
         display: flex;
         justify-content: center;
         align-items: center;
@@ -31,7 +31,7 @@ CANVAS_STATUS_PANEL_TEMPLATE = """
 </head>
 <body>
     <!-- 优化画布尺寸，确保内容清晰且布局舒适 -->
-    <canvas id="statusPanel" width="700" height="420"></canvas>
+    <canvas id="statusPanel" width="720" height="440"></canvas>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -75,66 +75,66 @@ CANVAS_STATUS_PANEL_TEMPLATE = """
 
             // --- 绘制开始 ---
             // 1. 绘制主背景
-            ctx.fillStyle = '#f7f8fa';
+            ctx.fillStyle = '#f6f8fa';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             // 2. 绘制标题 (全中文，居中，字体清晰)
-            ctx.font = "700 34px 'Noto Sans SC', sans-serif";
+            ctx.font = "700 36px 'Noto Sans SC', sans-serif";
             ctx.fillStyle = '#1f2328';
             ctx.textAlign = 'center';
-            ctx.fillText("🛡️ 注入防御系统状态", canvas.width / 2, 75);
+            ctx.fillText("🛡️ 注入防御系统状态", canvas.width / 2, 80);
 
             // 3. 绘制状态模块
             function drawStatusBlock(x, y, title, status, description, statusColor) {
                 // 绘制块背景
                 ctx.fillStyle = '#ffffff';
-                ctx.strokeStyle = '#e1e4e8';
+                ctx.strokeStyle = '#d0d7de';
                 ctx.lineWidth = 1;
-                drawRoundRect(x, y, 310, 170, 12).fill();
-                drawRoundRect(x, y, 310, 170, 12).stroke();
+                drawRoundRect(x, y, 320, 180, 12).fill();
+                drawRoundRect(x, y, 320, 180, 12).stroke();
 
                 // 绘制块标题
                 ctx.textAlign = 'left';
-                ctx.font = "700 20px 'Noto Sans SC', sans-serif";
+                ctx.font = "700 22px 'Noto Sans SC', sans-serif";
                 ctx.fillStyle = '#1f2328';
-                ctx.fillText(title, x + 30, y + 48);
+                ctx.fillText(title, x + 30, y + 50);
 
                 // 绘制分割线
                 ctx.beginPath();
-                ctx.moveTo(x + 30, y + 68);
-                ctx.lineTo(x + 280, y + 68);
-                ctx.strokeStyle = '#e1e4e8';
+                ctx.moveTo(x + 30, y + 70);
+                ctx.lineTo(x + 290, y + 70);
+                ctx.strokeStyle = '#d0d7de';
                 ctx.stroke();
 
                 // 绘制状态值 (显著增大字体)
-                ctx.font = "700 36px 'Inter', sans-serif";
+                ctx.font = "700 40px 'Inter', sans-serif";
                 ctx.fillStyle = statusColor;
-                ctx.fillText(status, x + 30, y + 115);
+                ctx.fillText(status, x + 30, y + 120);
 
                 // 绘制状态描述
-                ctx.font = "400 15px 'Noto Sans SC', sans-serif";
+                ctx.font = "400 16px 'Noto Sans SC', sans-serif";
                 ctx.fillStyle = '#57606a';
-                wrapText(description, x + 30, y + 145, 250, 24);
+                wrapText(description, x + 30, y + 155, 260, 25);
             }
             
             // 绘制群聊模块
-            drawStatusBlock(30, 120, "群聊扫描模块", data.current_mode, data.mode_description, data.mode_color);
+            drawStatusBlock(30, 130, "群聊扫描模块", data.current_mode, data.mode_description, data.mode_color);
             // 绘制私聊模块
-            drawStatusBlock(360, 120, "私聊扫描模块", data.private_chat_status, data.private_chat_description, data.private_color);
+            drawStatusBlock(370, 130, "私聊扫描模块", data.private_chat_status, data.private_chat_description, data.private_color);
 
             // 4. 绘制底部安全提示
             ctx.textAlign = 'center';
-            ctx.font = "400 14px 'Noto Sans SC', sans-serif";
+            ctx.font = "400 15px 'Noto Sans SC', sans-serif";
             ctx.fillStyle = '#6e7781';
             const disclaimer = "安全提示：本插件为辅助安全工具，无法完全替代主动安全策略。为了您的资产安全，请持续关注机器人状态。";
-            wrapText(disclaimer, canvas.width / 2, 340, 640, 22);
+            wrapText(disclaimer, canvas.width / 2, 360, 660, 24);
         });
     </script>
 </body>
 </html>
 """
 
-@register("antipromptinjector", "LumineStory", "一个用于阻止提示词注入攻击的插件", "2.0.0") 
+@register("antipromptinjector", "LumineStory", "一个用于阻止提示词注入攻击的插件", "2.0.0") # 版本号更新为 2.0.0
 class AntiPromptInjector(Star):
     def __init__(self, context: Context, config: AstrBotConfig = None):
         super().__init__(context)
@@ -220,16 +220,17 @@ class AntiPromptInjector(Star):
 
     @filter.event_message_type(filter.EventMessageType.ALL)
     async def detect_prompt_injection(self, event: AstrMessageEvent):
-        message_content = event.get_message_str().strip()
         # 修正逻辑：确保命令及其参数不被审核
-        if message_content.startswith('/'):
-            logger.debug(f"检测到命令消息: {message_content}. 跳过注入检测。")
+        if event.get_message_str().strip().startswith('/'):
+            logger.debug(f"检测到命令消息: {event.get_message_str()}. 跳过注入检测。")
             return
         if not self.plugin_enabled:
             return
         current_whitelist = self.config.get("whitelist", []) 
         if event.get_sender_id() in current_whitelist:
             return
+        
+        message_content = event.get_message_str().strip()
         for p in self.patterns:
             if p.search(message_content):
                 logger.warning(f"⚠️ 正则表达式拦截注入消息: {message_content}")
@@ -433,13 +434,13 @@ class AntiPromptInjector(Star):
         private_chat_llm_enabled = self.config.get("llm_analysis_private_chat_enabled", False)
 
         status_map: Dict[str, Dict[str, str]] = {
-            "active": {"text": "活跃", "color": "#f47075", "desc": "将对每条群聊消息进行分析。若5秒内无分析活动，将自动切换到待机模式。"},
-            "standby": {"text": "待机", "color": "#f8c377", "desc": "仅在群聊消息明确指向机器人或检测到注入时触发分析。"},
-            "disabled": {"text": "禁用", "color": "#7a829c", "desc": "所有群聊消息将跳过AI安全扫描。"}
+            "active": {"text": "活跃", "color": "#db6161", "desc": "将对每条群聊消息进行分析。若5秒内无分析活动，将自动切换到待机模式。"},
+            "standby": {"text": "待机", "color": "#d29922", "desc": "仅在群聊消息明确指向机器人或检测到注入时触发分析。"},
+            "disabled": {"text": "禁用", "color": "#6e7781", "desc": "所有群聊消息将跳过AI安全扫描。"}
         }
         private_status_map: Dict[bool, Dict[str, str]] = {
-            True: {"text": "已启用", "color": "#89ca78", "desc": "所有私聊消息都将进行LLM安全分析，不受群聊模式影响。"},
-            False: {"text": "已禁用", "color": "#7a829c", "desc": "所有私聊消息将跳过LLM分析，以节约资源。"}
+            True: {"text": "已启用", "color": "#57ab5a", "desc": "所有私聊消息都将进行LLM安全分析，不受群聊模式影响。"},
+            False: {"text": "已禁用", "color": "#6e7781", "desc": "所有私聊消息将跳过LLM分析，以节约资源。"}
         }
         
         mode_data = status_map.get(current_mode, status_map["standby"])
