@@ -73,7 +73,7 @@ STATUS_PANEL_TEMPLATE = """
 </html>
 """
 
-@register("antipromptinjector", "LumineStory", "一个用于阻止提示词注入攻击的插件", "2.0.0")
+@register("antipromptinjector", "LumineStory", "一个用于阻止提示词注入攻击的插件", "2.1.0")
 class AntiPromptInjector(Star):
     def __init__(self, context: Context, config: AstrBotConfig = None):
         super().__init__(context)
