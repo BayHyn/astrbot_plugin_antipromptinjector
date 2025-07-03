@@ -273,6 +273,9 @@ class AntiPromptInjector(Star):
 
     @filter.command("拉黑", is_admin=True)
     async def cmd_add_bl(self, event: AstrMessageEvent, target_id: str):
+        # 只允许全局管理员操作黑名单
+        if not event.is_admin():
+            yield event.plain_result("❌ 只有全局管理员可操作黑名单。"); return
         blacklist = self.config.get("blacklist", [])
         if target_id not in blacklist:
             blacklist.append(target_id)
@@ -284,6 +287,9 @@ class AntiPromptInjector(Star):
 
     @filter.command("解封", is_admin=True)
     async def cmd_remove_bl(self, event: AstrMessageEvent, target_id: str):
+        # 只允许全局管理员操作黑名单
+        if not event.is_admin():
+            yield event.plain_result("❌ 只有全局管理员可操作黑名单。"); return
         blacklist = self.config.get("blacklist", [])
         if target_id in blacklist:
             blacklist.remove(target_id)
