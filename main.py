@@ -9,13 +9,6 @@ from astrbot.api.star import Context, Star, register
 from astrbot.api import logger, AstrBotConfig
 from astrbot.api.all import MessageType, MessageChain, Plain
 
-class InjectionDetectedException(Exception):
-    """一个内部标记，用于在函数内部传递状态，并在拦截模式下强制中断流程。"""
-    def __init__(self, message, reason=""):
-        super().__init__(message)
-        self.reason = reason
-
-
 STATUS_PANEL_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -131,7 +124,6 @@ class AntiPromptInjector(Star):
     async def _handle_detection(self, event: AstrMessageEvent, req: ProviderRequest, reason: str):
         """处理检测到注入后的所有反制措施"""
         sender_id = event.get_sender_id()
-        # 1. 自动拉黑
         if self.config.get("auto_blacklist"):
             blacklist: List[str] = self.config.get("blacklist", [])
             if sender_id not in blacklist:
@@ -140,7 +132,6 @@ class AntiPromptInjector(Star):
                 self.config.save_config()
                 logger.warning(f"🚨 [自动拉黑] 用户 {sender_id} 已被添加至黑名单。")
         
-        # 2. 管理员警报
         if self.config.get("alert_admins"):
             await self._alert_admins(event, req, reason)
 
@@ -190,12 +181,10 @@ class AntiPromptInjector(Star):
 
     async def _detect_risk(self, event: AstrMessageEvent, req: ProviderRequest) -> Tuple[bool, str]:
         """风险检测逻辑"""
-        # 正则检测
         for p in self.patterns:
             if p.search(req.prompt):
                 return True, "正则匹配到注入风险"
 
-        # LLM 分析 (如果需要)
         defense_mode = self.config.get("defense_mode", "sentry")
         if defense_mode == "sentry":
             return False, ""
@@ -225,37 +214,37 @@ class AntiPromptInjector(Star):
 
         return False, ""
 
+    async def _trigger_defense(self, event: AstrMessageEvent, req: ProviderRequest, reason: str):
+        """统一的防御和反制措施执行入口"""
+        await self._handle_detection(event, req, reason)
+        defense_mode = self.config.get("defense_mode", "sentry")
+
+        if defense_mode == "aegis" or defense_mode == "sentry":
+            await self._apply_aegis_defense(req)
+            logger.info(f"执行[{'哨兵-神盾' if defense_mode == 'sentry' else '神盾'}]策略。")
+        elif defense_mode == "scorch":
+            await self._apply_scorch_defense(req)
+            logger.info("执行[焦土]策略。")
+        elif defense_mode == "intercept":
+            await event.send(event.plain_result("⚠️ 检测到可能的注入攻击，请求已被拦截。"))
+            await self._apply_scorch_defense(req)
+            event.stop_event()
+            logger.info("执行[拦截]策略。")
+
     @filter.on_llm_request(priority=-1000)
     async def intercept_llm_request(self, event: AstrMessageEvent, req: ProviderRequest):
         try:
-            # 1. 基础检查
             if not self.config.get("enabled") or event.get_sender_id() in self.config.get("whitelist", []):
                 return
+            
             if event.get_sender_id() in self.config.get("blacklist", []):
-                await self._handle_detection(event, req, "用户在黑名单中")
-                await self._apply_scorch_defense(req)
-                event.stop_event()
+                await self._trigger_defense(event, req, "用户在黑名单中")
                 return
 
-            # 2. 风险检测
             is_risky, risk_reason = await self._detect_risk(event, req)
 
-            # 3. 如果有风险，执行反制和防御
             if is_risky:
-                await self._handle_detection(event, req, risk_reason)
-                defense_mode = self.config.get("defense_mode", "sentry")
-
-                if defense_mode == "aegis" or defense_mode == "sentry":
-                    await self._apply_aegis_defense(req)
-                    logger.info(f"执行[{'哨兵-神盾' if defense_mode == 'sentry' else '神盾'}]策略。")
-                elif defense_mode == "scorch":
-                    await self._apply_scorch_defense(req)
-                    logger.info("执行[焦土]策略。")
-                elif defense_mode == "intercept":
-                    await event.send(event.plain_result("⚠️ 检测到可能的注入攻击，请求已被拦截。"))
-                    await self._apply_scorch_defense(req)
-                    event.stop_event()
-                    logger.info("执行[拦截]策略。")
+                await self._trigger_defense(event, req, risk_reason)
 
         except Exception as e:
             logger.error(f"⚠️ [拦截] 注入分析时发生未知错误: {e}")
