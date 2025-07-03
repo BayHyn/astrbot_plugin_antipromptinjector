@@ -73,7 +73,7 @@ class AntiPromptInjector(Star):
         self.config = config if config else {}
         defaults = {
             "enabled": True, "whitelist": self.config.get("initial_whitelist", []),
-            "blacklist": [], "auto_blacklist": True, "alert_admins": True,
+            "blacklist": [], "auto_blacklist": True,
             "defense_mode": "sentry", "llm_analysis_mode": "standby",
             "llm_analysis_private_chat_enabled": False
         }
@@ -121,53 +121,16 @@ class AntiPromptInjector(Star):
         req.contexts = []
         req.prompt = "请求已被安全系统拦截。"
 
-    async def _handle_detection(self, event: AstrMessageEvent, req: ProviderRequest, reason: str):
-        """处理检测到注入后的所有反制措施"""
-        sender_id = event.get_sender_id()
+    async def _handle_blacklist(self, event: AstrMessageEvent, reason: str):
+        """处理自动拉黑"""
         if self.config.get("auto_blacklist"):
+            sender_id = event.get_sender_id()
             blacklist: List[str] = self.config.get("blacklist", [])
             if sender_id not in blacklist:
                 blacklist.append(sender_id)
                 self.config["blacklist"] = blacklist
                 self.config.save_config()
-                logger.warning(f"🚨 [自动拉黑] 用户 {sender_id} 已被添加至黑名单。")
-        
-        if self.config.get("alert_admins"):
-            await self._alert_admins(event, req, reason)
-
-    async def _alert_admins(self, event: AstrMessageEvent, req: ProviderRequest, reason: str):
-        """向所有全局管理员发送警报"""
-        admin_ids = self.context.get_config().get("admins", [])
-        if not admin_ids:
-            logger.warning("未配置任何全局管理员，无法发送警报。")
-            return
-        
-        alert_msg = (
-            f"🚨 **安全警报：检测到注入攻击** 🚨\n\n"
-            f"**来源平台**: {event.get_platform_name()}\n"
-            f"**攻击者**: {event.get_sender_name()} ({event.get_sender_id()})\n"
-            f"**触发原因**: {reason}\n"
-            f"**自动反制**: 用户已被自动拉黑 (如已开启)\n"
-            f"**原始恶意消息**:\n"
-            f"--------------------\n"
-            f"{req.prompt}"
-        )
-        
-        platforms = self.context.platform_manager.get_insts()
-        for admin_id in admin_ids:
-            sent_on_any_platform = False
-            for platform in platforms:
-                try:
-                    session_id = f"{platform.meta.name}:private:{admin_id}"
-                    if await self.context.send_message(session_id, MessageChain([Plain(alert_msg)])):
-                        logger.info(f"已通过平台 {platform.meta.name} 向管理员 {admin_id} 发送警报。")
-                        sent_on_any_platform = True
-                        break 
-                except Exception as e:
-                    logger.debug(f"尝试通过平台 {platform.meta.name} 向管理员 {admin_id} 发送警报失败: {e}")
-            
-            if not sent_on_any_platform:
-                logger.error(f"向管理员 {admin_id} 发送警报失败：所有平台均无法发送。")
+                logger.warning(f"🚨 [自动拉黑] 用户 {sender_id} 已被添加至黑名单，原因: {reason}。")
 
     async def _monitor_llm_activity(self):
         while True:
@@ -214,23 +177,6 @@ class AntiPromptInjector(Star):
 
         return False, ""
 
-    async def _trigger_defense(self, event: AstrMessageEvent, req: ProviderRequest, reason: str):
-        """统一的防御和反制措施执行入口"""
-        await self._handle_detection(event, req, reason)
-        defense_mode = self.config.get("defense_mode", "sentry")
-
-        if defense_mode == "aegis" or defense_mode == "sentry":
-            await self._apply_aegis_defense(req)
-            logger.info(f"执行[{'哨兵-神盾' if defense_mode == 'sentry' else '神盾'}]策略。")
-        elif defense_mode == "scorch":
-            await self._apply_scorch_defense(req)
-            logger.info("执行[焦土]策略。")
-        elif defense_mode == "intercept":
-            await event.send(event.plain_result("⚠️ 检测到可能的注入攻击，请求已被拦截。"))
-            await self._apply_scorch_defense(req)
-            event.stop_event()
-            logger.info("执行[拦截]策略。")
-
     @filter.on_llm_request(priority=-1000)
     async def intercept_llm_request(self, event: AstrMessageEvent, req: ProviderRequest):
         try:
@@ -238,13 +184,27 @@ class AntiPromptInjector(Star):
                 return
             
             if event.get_sender_id() in self.config.get("blacklist", []):
-                await self._trigger_defense(event, req, "用户在黑名单中")
+                await self._apply_scorch_defense(req)
+                event.stop_event()
                 return
 
             is_risky, risk_reason = await self._detect_risk(event, req)
 
             if is_risky:
-                await self._trigger_defense(event, req, risk_reason)
+                await self._handle_blacklist(event, risk_reason)
+                defense_mode = self.config.get("defense_mode", "sentry")
+
+                if defense_mode == "aegis" or defense_mode == "sentry":
+                    await self._apply_aegis_defense(req)
+                    logger.info(f"执行[{'哨兵-神盾' if defense_mode == 'sentry' else '神盾'}]策略。")
+                elif defense_mode == "scorch":
+                    await self._apply_scorch_defense(req)
+                    logger.info("执行[焦土]策略。")
+                elif defense_mode == "intercept":
+                    await event.send(event.plain_result("⚠️ 检测到可能的注入攻击，请求已被拦截。"))
+                    await self._apply_scorch_defense(req)
+                    event.stop_event()
+                    logger.info("执行[拦截]策略。")
 
         except Exception as e:
             logger.error(f"⚠️ [拦截] 注入分析时发生未知错误: {e}")
