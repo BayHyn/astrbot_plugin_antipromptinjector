@@ -73,7 +73,7 @@ STATUS_PANEL_TEMPLATE = """
 </html>
 """
 
-@register("antipromptinjector", "LumineStory", "一个用于阻止提示词注入攻击的插件", "2.1.0")
+@register("antipromptinjector", "LumineStory", "一个用于阻止提示词注入攻击的插件", "2.0.0")
 class AntiPromptInjector(Star):
     def __init__(self, context: Context, config: AstrBotConfig = None):
         super().__init__(context)
@@ -145,6 +145,8 @@ class AntiPromptInjector(Star):
             await self._alert_admins(event, req, reason)
 
     async def _alert_admins(self, event: AstrMessageEvent, req: ProviderRequest, reason: str):
+        """向所有全局管理员发送警报"""
+        # 通过官方API获取全局管理员列表
         admin_ids = self.context.get_config().get("admins", [])
         if not admin_ids:
             logger.warning("未配置任何全局管理员，无法发送警报。")
@@ -152,7 +154,7 @@ class AntiPromptInjector(Star):
         
         alert_msg = (
             f"🚨 **安全警报：检测到注入攻击** 🚨\n\n"
-            f"**平台**: {event.get_platform_name()}\n"
+            f"**来源平台**: {event.get_platform_name()}\n"
             f"**攻击者**: {event.get_sender_name()} ({event.get_sender_id()})\n"
             f"**触发原因**: {reason}\n"
             f"**自动反制**: 用户已被自动拉黑 (如已开启)\n"
@@ -161,14 +163,26 @@ class AntiPromptInjector(Star):
             f"{req.prompt}"
         )
         
+        # 获取所有已启动的平台实例
+        platforms = self.context.platform_manager.get_insts()
+
         for admin_id in admin_ids:
-            try:
-                # 尝试构建私聊的 unified_msg_origin
-                session_id = f"{event.get_platform_name()}:private:{admin_id}"
-                await self.context.send_message(session_id, MessageChain([Plain(alert_msg)]))
-                logger.info(f"已向管理员 {admin_id} 发送警报。")
-            except Exception as e:
-                logger.error(f"向管理员 {admin_id} 发送警报失败: {e}")
+            sent_on_any_platform = False
+            # 尝试在所有可用平台上向该管理员发送消息
+            for platform in platforms:
+                try:
+                    session_id = f"{platform.meta.name}:private:{admin_id}"
+                    # send_message 返回是否成功找到平台并发送
+                    if await self.context.send_message(session_id, MessageChain([Plain(alert_msg)])):
+                        logger.info(f"已通过平台 {platform.meta.name} 向管理员 {admin_id} 发送警报。")
+                        sent_on_any_platform = True
+                        break # 假设一个管理员ID在一个平台发送成功即可
+                except Exception as e:
+                    logger.debug(f"尝试通过平台 {platform.meta.name} 向管理员 {admin_id} 发送警报失败: {e}")
+            
+            if not sent_on_any_platform:
+                logger.error(f"向管理员 {admin_id} 发送警报失败：所有平台均无法发送。")
+
 
     async def _monitor_llm_activity(self):
         while True:
@@ -186,7 +200,6 @@ class AntiPromptInjector(Star):
             if not self.config.get("enabled") or event.get_sender_id() in self.config.get("whitelist", []):
                 return
             
-            # 黑名单检查
             if event.get_sender_id() in self.config.get("blacklist", []):
                 raise InjectionDetectedException("用户在黑名单中", reason="用户在黑名单中")
 
@@ -203,8 +216,7 @@ class AntiPromptInjector(Star):
             
             if defense_mode == "sentry":
                 if is_risky:
-                    await self._apply_aegis_defense(req)
-                    logger.info("执行[哨兵-神盾]策略。")
+                    raise InjectionDetectedException("检测到高风险请求", reason=risk_reason)
                 return
 
             if not is_risky:
