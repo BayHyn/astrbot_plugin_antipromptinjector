@@ -2,7 +2,6 @@
     "enabled": {
         "description": "是否启用反注入攻击插件功能。",
         "type": "bool",
-        "hint": "设置为 True 启用提示词注入拦截功能，设置为 False 关闭。",
         "default": true
     },
     "defense_mode": {
@@ -16,8 +15,27 @@
         ],
         "default": "sentry",
         "ui:widget": "select",
-        "hint": "选择插件的核心防御策略。此设置为下拉菜单，直接编辑配置文件时请填入对应的英文值。\n\n- **哨兵模式 (sentry)**: 仅进行正则匹配，对命中项采取'神盾'策略，性能最高。\n- **神盾模式 (aegis)**: 引入LLM二次研判，对高风险请求注入安全指令，由主LLM裁决。\n- **焦土模式 (scorch)**: 将所有高风险请求直接改写为拦截通知，提供最强硬防护。\n- **拦截模式 (intercept)**: 检测到风险时，直接终止事件。此模式兼容性好，是经典的拦截策略。\n\n**快速切换**: 管理员可发送指令 `/切换防护模式` 来循环切换以上模式。",
+        "hint": "选择插件的核心防御策略。\n- 哨兵模式: 仅进行正则匹配，对命中项采取'神盾'策略，性能最高。\n- 神盾模式: 引入LLM二次研判，对高风险请求注入最高安全指令，由主LLM裁决。\n- 焦土模式: 将所有高风险请求直接改写为拦截通知，提供最强硬防护。\n- 拦截模式: 检测到风险时，直接终止事件。此模式兼容性好，是经典的拦截策略。\n\n**快速切换**: 管理员可发送指令 `/切换防护模式` 来循环切换以上模式。",
         "obvious_hint": true
+    },
+    "auto_blacklist": {
+        "description": "自动拉黑注入者",
+        "type": "bool",
+        "default": true,
+        "hint": "启用后，当用户被判定为进行注入攻击时，其ID将被自动添加至黑名单。"
+    },
+    "alert_admins": {
+        "description": "向管理员发送警报",
+        "type": "bool",
+        "default": true,
+        "hint": "启用后，当用户被拉黑时，会自动向在AstrBot主配置中设置的所有全局管理员发送私聊警报。"
+    },
+    "blacklist": {
+        "description": "黑名单列表 (自动或手动添加)",
+        "type": "list",
+        "items": { "type": "string", "description": "用户ID" },
+        "default": [],
+        "hint": "此列表中的用户ID将被完全禁止与机器人交互。可通过指令管理。"
     },
     "initial_whitelist": {
         "description": "插件的初始白名单用户ID列表。",
@@ -35,7 +53,7 @@
         ],
         "default": "standby",
         "ui:widget": "select",
-        "hint": "控制LLM辅助分析的运行模式。此设置为下拉菜单，直接编辑配置文件时请填入对应的英文值。\n\n- **活跃 (active)**: 对每条消息都进行LLM辅助分析。\n- **待机 (standby)**: 仅在@机器人或检测到注入时进行LLM辅助分析。\n- **禁用 (disabled)**: 完全关闭LLM辅助分析。",
+        "hint": "控制LLM辅助分析的运行模式。\n- 活跃: 对每条消息都进行LLM辅助分析。\n- 待机: 仅在@机器人或检测到注入时进行LLM辅助分析。\n- 禁用: 完全关闭LLM辅助分析。",
         "obvious_hint": true
     },
     "llm_analysis_private_chat_enabled": {
