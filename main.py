@@ -180,7 +180,10 @@ class AntiPromptInjector(Star):
     @filter.on_llm_request(priority=-1000)
     async def intercept_llm_request(self, event: AstrMessageEvent, req: ProviderRequest):
         try:
-            if not self.config.get("enabled") or event.get_sender_id() in self.config.get("whitelist", []):
+            if not self.config.get("enabled"):
+                return
+            # 白名单用户直接放行
+            if event.get_sender_id() in self.config.get("whitelist", []):
                 return
             
             if event.get_sender_id() in self.config.get("blacklist", []):
@@ -267,9 +270,8 @@ class AntiPromptInjector(Star):
             "/查看防注入白名单\n"
         )
         
-    def _is_admin_or_whitelist(self, event: AstrMessageEvent) -> bool:
-        if event.is_admin(): return True
-        return event.get_sender_id() in self.config.get("whitelist", [])
+    def _is_admin(self, event: AstrMessageEvent) -> bool:
+        return event.is_admin()
 
     @filter.command("拉黑", is_admin=True)
     async def cmd_add_bl(self, event: AstrMessageEvent, target_id: str):
@@ -309,6 +311,9 @@ class AntiPromptInjector(Star):
 
     @filter.command("添加防注入白名单ID", is_admin=True)
     async def cmd_add_wl(self, event: AstrMessageEvent, target_id: str):
+        if not self._is_admin(event):
+            yield event.plain_result("❌ 只有全局管理员可操作白名单。")
+            return
         current_whitelist = self.config.get("whitelist", [])
         if target_id not in current_whitelist:
             current_whitelist.append(target_id)
@@ -320,6 +325,9 @@ class AntiPromptInjector(Star):
 
     @filter.command("移除防注入白名单ID", is_admin=True)
     async def cmd_remove_wl(self, event: AstrMessageEvent, target_id: str):
+        if not self._is_admin(event):
+            yield event.plain_result("❌ 只有全局管理员可操作白名单。")
+            return
         current_whitelist = self.config.get("whitelist", [])
         if target_id in current_whitelist:
             current_whitelist.remove(target_id)
@@ -329,9 +337,9 @@ class AntiPromptInjector(Star):
         else:
             yield event.plain_result(f"⚠️ {target_id} 不在白名单中。")
 
-    @filter.command("查看防注入白名单")
+    @filter.command("查看防注入白名单", is_admin=True)
     async def cmd_view_wl(self, event: AstrMessageEvent):
-        if not self._is_admin_or_whitelist(event):
+        if not self._is_admin(event):
             yield event.plain_result("❌ 权限不足。")
             return
         current_whitelist = self.config.get("whitelist", [])
