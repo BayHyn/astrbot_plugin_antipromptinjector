@@ -122,15 +122,22 @@ class AntiPromptInjector(Star):
         req.prompt = "请求已被安全系统拦截。"
 
     async def _handle_blacklist(self, event: AstrMessageEvent, reason: str):
-        """处理自动拉黑"""
+        """处理自动拉黑，阈值3次"""
         if self.config.get("auto_blacklist"):
             sender_id = event.get_sender_id()
             blacklist: List[str] = self.config.get("blacklist", [])
-            if sender_id not in blacklist:
+            if sender_id in blacklist:
+                return
+            # 使用 config 记录用户风险计数
+            risk_count_key = f"risk_count_{sender_id}"
+            risk_count = self.config.get(risk_count_key, 0) + 1
+            self.config[risk_count_key] = risk_count
+            self.config.save_config()
+            if risk_count >= 3:
                 blacklist.append(sender_id)
                 self.config["blacklist"] = blacklist
                 self.config.save_config()
-                logger.warning(f"🚨 [自动拉黑] 用户 {sender_id} 已被添加至黑名单，原因: {reason}。")
+                logger.warning(f"🚨 [自动拉黑] 用户 {sender_id} 已被添加至黑名单，原因: {reason}。累计触发3次风险。")
 
     async def _monitor_llm_activity(self):
         while True:
@@ -185,7 +192,6 @@ class AntiPromptInjector(Star):
             # 白名单用户直接放行
             if event.get_sender_id() in self.config.get("whitelist", []):
                 return
-            
             if event.get_sender_id() in self.config.get("blacklist", []):
                 await self._apply_scorch_defense(req)
                 event.stop_event()
@@ -193,6 +199,7 @@ class AntiPromptInjector(Star):
 
             is_risky, risk_reason = await self._detect_risk(event, req)
 
+            # 只拦截本次激活请求，不影响后续消息
             if is_risky:
                 await self._handle_blacklist(event, risk_reason)
                 defense_mode = self.config.get("defense_mode", "sentry")
@@ -208,6 +215,8 @@ class AntiPromptInjector(Star):
                     await self._apply_scorch_defense(req)
                     event.stop_event()
                     logger.info("执行[拦截]策略。")
+                # 只拦截本次，不影响后续
+                return
 
         except Exception as e:
             logger.error(f"⚠️ [拦截] 注入分析时发生未知错误: {e}")
