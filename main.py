@@ -338,7 +338,6 @@ class AntiPromptInjector(Star):
             msg += f"- {uid} (剩余: {remaining_str})\n"
         yield event.plain_result(msg)
     
-    # ... a lot of other commands ...
     @filter.command("添加防注入白名单ID", is_admin=True)
     async def cmd_add_wl(self, event: AstrMessageEvent, target_id: str):
         current_whitelist = self.config.get("whitelist", [])
