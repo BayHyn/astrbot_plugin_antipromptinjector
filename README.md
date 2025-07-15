@@ -1,4 +1,4 @@
-# Anti-Prompt Injector v2.1 - 动态防御矩阵
+# Anti-Prompt Injector v3.0 - 动态防御矩阵
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/oyxning/oyxning/refs/heads/main/AntiPromptInjectorlogo.png" alt="AntiPromptInjector Banner" width="100%" style="border-radius: 8px;" />
