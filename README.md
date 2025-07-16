@@ -114,3 +114,9 @@
 
 本插件托管在 GitHub 上：[https://github.com/oyxning/astrbot_plugin_antipromptinjector](https://github.com/oyxning/astrbot_plugin_antipromptinjector)
 如有建议或 Bug，欢迎提交 issue。
+
+## 💡 另：插件反馈群
+
+由于作者持续的那么一个懒，平常不会及时的看issues，所以开了个QQ反馈群以及时的鞭打作者。
+**群号** ： 928985352
+**进群密码** ： 神人desuwa
