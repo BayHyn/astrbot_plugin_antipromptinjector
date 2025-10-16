@@ -542,6 +542,9 @@ class PromptGuardianWebUI:
         elif action == "clear_history":
             self.plugin.recent_incidents.clear()
             message = "已清空拦截记录"
+        elif action == "clear_logs":
+            self.plugin.analysis_logs.clear()
+            message = "已清空分析日志"
         else:
             message = "未知操作"
             success = False
@@ -551,6 +554,7 @@ class PromptGuardianWebUI:
         config = self.plugin.config
         stats = self.plugin.stats
         incidents = list(self.plugin.recent_incidents)
+        analysis_logs = list(self.plugin.analysis_logs)
         whitelist = config.get("whitelist", [])
         blacklist = config.get("blacklist", {})
         defense_mode = config.get("defense_mode", "sentry")
@@ -649,6 +653,11 @@ class PromptGuardianWebUI:
             f"<input type='hidden' name='action' value='clear_history'/>"
             f"<button class='btn danger' type='submit'>清空拦截记录</button></form>"
         )
+        html_parts.append(
+            f"<form class='inline-form' method='get' action='/'>{token_input}"
+            f"<input type='hidden' name='action' value='clear_logs'/>"
+            f"<button class='btn danger' type='submit'>清空分析日志</button></form>"
+        )
         html_parts.append("</div></div>")
 
         html_parts.append("</div>")
@@ -733,6 +742,31 @@ class PromptGuardianWebUI:
             html_parts.append("<div class='small'>尚未记录拦截事件。</div>")
         html_parts.append("</section>")
 
+        html_parts.append("<section class='card'><h3>分析日志</h3>")
+        if analysis_logs:
+            html_parts.append("<table><thead><tr><th>时间</th><th>来源</th><th>结果</th><th>严重级别</th><th>得分</th><th>触发</th><th>原因</th><th>内容预览</th></tr></thead><tbody>")
+            for item in analysis_logs[:50]:
+                timestamp = datetime.fromtimestamp(item["time"]).strftime("%Y-%m-%d %H:%M:%S")
+                source = item["sender_id"]
+                if item.get("group_id"):
+                    source = f"{source} @ {item['group_id']}"
+                html_parts.append(
+                    "<tr>"
+                    f"<td>{escape(timestamp)}</td>"
+                    f"<td>{escape(str(source))}</td>"
+                    f"<td>{escape(item.get('result', ''))}</td>"
+                    f"<td>{escape(item.get('severity', ''))}</td>"
+                    f"<td>{escape(str(item.get('score', 0)))}</td>"
+                    f"<td>{escape(item.get('trigger', ''))}</td>"
+                    f"<td>{escape(item.get('reason', ''))}</td>"
+                    f"<td>{escape(item.get('prompt_preview', ''))}</td>"
+                    "</tr>"
+                )
+            html_parts.append("</tbody></table>")
+        else:
+            html_parts.append("<div class='small'>暂无分析日志，可等待消息经过后查看。</div>")
+        html_parts.append("</section>")
+
         html_parts.append("</div></body></html>")
         return "\n".join(html_parts)
 
@@ -798,6 +832,7 @@ class AntiPromptInjector(Star):
         self.detector = PromptThreatDetector()
         history_size = max(10, int(self.config.get("incident_history_size", 100)))
         self.recent_incidents: deque = deque(maxlen=history_size)
+        self.analysis_logs: deque = deque(maxlen=200)
         self.stats: Dict[str, int] = {
             "total_intercepts": 0,
             "regex_hits": 0,
@@ -852,6 +887,20 @@ class AntiPromptInjector(Star):
             self.stats["regex_hits"] += 1
         else:
             self.stats["heuristic_hits"] += 1
+
+    def _append_analysis_log(self, event: AstrMessageEvent, analysis: Dict[str, Any], intercepted: bool):
+        entry = {
+            "time": time.time(),
+            "sender_id": event.get_sender_id(),
+            "group_id": event.get_group_id(),
+            "severity": analysis.get("severity", "none"),
+            "score": analysis.get("score", 0),
+            "trigger": analysis.get("trigger", "scan"),
+            "result": "拦截" if intercepted else "放行",
+            "reason": analysis.get("reason") or ("未检测到明显风险" if not intercepted else "检测到风险"),
+            "prompt_preview": self._make_prompt_preview(analysis.get("prompt", "")),
+        }
+        self.analysis_logs.appendleft(entry)
 
     def _build_stats_summary(self) -> str:
         return (
@@ -1044,6 +1093,7 @@ class AntiPromptInjector(Star):
                         "trigger": "blacklist",
                     }
                     self._record_incident(event, analysis, self.config.get("defense_mode", "sentry"), "blacklist")
+                    self._append_analysis_log(event, analysis, True)
                     event.stop_event()
                     return
                 del blacklist[sender_id]
@@ -1067,7 +1117,17 @@ class AntiPromptInjector(Star):
                     await self._apply_scorch_defense(req)
                     event.stop_event()
 
+                analysis["reason"] = reason
                 self._record_incident(event, analysis, defense_mode, defense_mode)
+                self._append_analysis_log(event, analysis, True)
+            else:
+                if not analysis.get("reason"):
+                    analysis["reason"] = "未检测到明显风险"
+                if not analysis.get("severity"):
+                    analysis["severity"] = "none"
+                if not analysis.get("trigger"):
+                    analysis["trigger"] = "scan"
+                self._append_analysis_log(event, analysis, False)
         except Exception as exc:
             logger.error(f"⚠️ [拦截] 注入分析时发生错误: {exc}")
             await self._apply_scorch_defense(req)
