@@ -15,32 +15,35 @@
         ],
         "default": "sentry",
         "ui:widget": "select",
-        "hint": "选择插件的核心防御策略。\n- 哨兵模式(sentry): 仅进行正则匹配，对命中项采取'神盾'策略，性能最高。\n- 神盾模式(aegis): 引入LLM二次研判，对高风险请求注入最高安全指令，由主LLM裁决。\n- 焦土模式(scorch): 将所有高风险请求直接改写为拦截通知，提供最强硬防护。\n- 拦截模式(intercept): 检测到风险时，直接终止事件。此模式兼容性好，是经典的拦截策略。\n\n**快速切换**: 管理员可发送指令 `/切换防护模式` 来循环切换以上模式。",
+        "hint": "选择插件的核心防御策略。\n- 哨兵模式(sentry): 启发式巡航，命中高风险时自动加固提示词，性能优先。\n- 神盾模式(aegis): 启发式 + LLM 复核，兼顾安全性与体验。\n- 焦土模式(scorch): 命中风险即强制改写为拦截提示，最严格。\n- 拦截模式(intercept): 命中风险直接中止事件，兼容性最佳。\n\n快捷指令：管理员可发送 `/切换防护模式` 循环切换。",
         "obvious_hint": true
     },
     "auto_blacklist": {
         "description": "自动拉黑注入者",
         "type": "bool",
         "default": true,
-        "hint": "启用后，当用户被判定为进行注入攻击时，其ID将被自动添加至黑名单。"
+        "hint": "启用后，当用户被判定为进行注入攻击时，其 ID 将被自动添加至黑名单。"
     },
     "blacklist_duration": {
         "description": "自动拉黑时长（分钟）",
         "type": "int",
         "default": 60,
-        "hint": "当用户被自动拉黑时，封禁的时长（单位：分钟）。设置为0则为永久封禁。"
+        "hint": "自动拉黑的封禁时长（单位：分钟）。设置为 0 代表永久封禁。"
     },
     "blacklist": {
-        "description": "黑名单列表 (自动或手动添加)",
+        "description": "黑名单列表（自动或手动添加）",
         "type": "object",
         "default": {},
         "items": {},
-        "hint": "此列表中的用户ID将被完全禁止与机器人交互。记录了用户ID与解封时间戳。可通过指令管理。"
+        "hint": "记录被封禁用户及其解封时间戳，可通过指令或 WebUI 管理。"
     },
     "initial_whitelist": {
-        "description": "插件的初始白名单用户ID列表。",
+        "description": "插件的初始白名单用户 ID 列表",
         "type": "list",
-        "items": { "type": "string", "description": "用户ID" },
+        "items": {
+            "type": "string",
+            "description": "用户 ID"
+        },
         "default": []
     },
     "llm_analysis_mode": {
@@ -53,13 +56,43 @@
         ],
         "default": "standby",
         "ui:widget": "select",
-        "hint": "控制LLM辅助分析的运行模式。\n- 活跃(active): 对每条消息都进行LLM辅助分析。\n- 待机(standby): 仅在@机器人或检测到注入时进行LLM辅助分析。\n- 禁用(disabled): 完全关闭LLM辅助分析。",
+        "hint": "控制 LLM 辅助分析的触发策略。\n- 活跃(active): 每条消息都进行复核。\n- 待机(standby): 命中风险或出现 @ 时才复核。\n- 禁用(disabled): 完全关闭 LLM 复核。",
         "obvious_hint": true
     },
     "llm_analysis_private_chat_enabled": {
-        "description": "私聊中也启用LLM辅助分析",
+        "description": "私聊中也启用 LLM 辅助分析",
         "type": "bool",
         "default": false,
-        "hint": "设置为 True 可让私聊消息也进行LLM注入分析。"
+        "hint": "设为 true 可让私聊消息同样触发 LLM 注入分析。"
+    },
+    "incident_history_size": {
+        "description": "WebUI 拦截记录数量上限",
+        "type": "int",
+        "default": 100,
+        "hint": "控制 WebUI 中展示的历史拦截事件数量，建议 50-200。"
+    },
+    "webui_enabled": {
+        "description": "是否启用 WebUI 控制台",
+        "type": "bool",
+        "default": true,
+        "hint": "开启后，在配置的地址上提供可视化配置与监控面板。"
+    },
+    "webui_host": {
+        "description": "WebUI 监听地址",
+        "type": "string",
+        "default": "127.0.0.1",
+        "hint": "默认仅允许本地访问，如需对局域网开放请修改为 0.0.0.0。"
+    },
+    "webui_port": {
+        "description": "WebUI 监听端口",
+        "type": "int",
+        "default": 18888,
+        "hint": "与其他服务端口冲突时可在此处调整。"
+    },
+    "webui_token": {
+        "description": "WebUI 访问令牌",
+        "type": "string",
+        "default": "",
+        "hint": "设置非空字符串后，访问 WebUI 需携带 ?token=令牌，确保面板安全。"
     }
 }
