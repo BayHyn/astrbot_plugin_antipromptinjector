@@ -1,6 +1,6 @@
 # Anti-Prompt Injector · AstrBot 提示词安全插件
 
-![License](https://img.shields.io/badge/License-Apache--2.0-blue.svg)
+![License](https://img.shields.io/badge/License-AGPL--3.0-red.svg)
 ![PTD Core](https://img.shields.io/badge/PTD-2.2-brightgreen.svg)
 [![GitHub Repo](https://img.shields.io/badge/GitHub-astrbot__plugin__antipromptinjector-black.svg)](https://github.com/oyxning/astrbot_plugin_antipromptinjector)
 
