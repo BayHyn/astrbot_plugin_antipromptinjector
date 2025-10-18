@@ -1,5 +1,9 @@
 # Anti-Prompt Injector · AstrBot 提示词安全插件
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/oyxning/oyxning/refs/heads/main/AntiPromptInjectorlogo.png" alt="AntiPromptInjector Banner" width="100%" style="border-radius: 8px;" />
+</p>
+
 ![License](https://img.shields.io/badge/License-Apache--2.0-blue.svg)
 ![PTD Core](https://img.shields.io/badge/PTD-2.2-brightgreen.svg)
 [![GitHub Repo](https://img.shields.io/badge/GitHub-astrbot__plugin__antipromptinjector-black.svg)](https://github.com/oyxning/astrbot_plugin_antipromptinjector)
