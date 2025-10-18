@@ -89,10 +89,28 @@
         "default": 18888,
         "hint": "与其他服务端口冲突时可在此处调整。"
     },
+    "webui_password_hash": {
+        "description": "WebUI 密码哈希（自动维护）",
+        "type": "string",
+        "default": "",
+        "hint": "请通过指令 /设置WebUI密码 <新密码> 设置。此字段由插件自动生成，无需手动修改。"
+    },
+    "webui_password_salt": {
+        "description": "WebUI 密码盐值（自动维护）",
+        "type": "string",
+        "default": "",
+        "hint": "由插件自动生成，与 webui_password_hash 配套使用。"
+    },
     "webui_token": {
         "description": "WebUI 访问令牌",
         "type": "string",
         "default": "",
         "hint": "设置非空字符串后，访问 WebUI 需携带 ?token=令牌，确保面板安全。"
+    },
+    "webui_session_timeout": {
+        "description": "WebUI 会话保持时长（秒）",
+        "type": "int",
+        "default": 3600,
+        "hint": "登录成功后的会话有效期，默认 3600 秒。"
     }
 }
